@@ -5,11 +5,13 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { plannedPayments } from "@/db/schema";
 import { setHolidayFundPence } from "@/lib/settings";
+import { revalidateHousehold } from "@/lib/cache";
 
 function revalidate() {
   revalidatePath("/outlook");
   revalidatePath("/budget");
   revalidatePath("/");
+  revalidateHousehold();
 }
 
 export async function addPlannedPayment(input: {

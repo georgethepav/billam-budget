@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { savingsTransfers, savingsGoals } from "@/db/schema";
 import { isoDate } from "@/lib/dates";
+import { revalidateHousehold } from "@/lib/cache";
 
 export async function recordSavingsTransfer(input: {
   amountPence: number;
@@ -18,12 +19,14 @@ export async function recordSavingsTransfer(input: {
   });
   revalidatePath("/savings");
   revalidatePath("/");
+  revalidateHousehold();
 }
 
 export async function deleteSavingsTransfer(id: string) {
   await db.delete(savingsTransfers).where(eq(savingsTransfers.id, id));
   revalidatePath("/savings");
   revalidatePath("/");
+  revalidateHousehold();
 }
 
 export async function addSavingsGoal(input: {
@@ -40,6 +43,7 @@ export async function addSavingsGoal(input: {
   });
   revalidatePath("/savings");
   revalidatePath("/");
+  revalidateHousehold();
 }
 
 export async function updateSavingsGoal(
@@ -55,10 +59,12 @@ export async function updateSavingsGoal(
   await db.update(savingsGoals).set(patch).where(eq(savingsGoals.id, id));
   revalidatePath("/savings");
   revalidatePath("/");
+  revalidateHousehold();
 }
 
 export async function deleteSavingsGoal(id: string) {
   await db.delete(savingsGoals).where(eq(savingsGoals.id, id));
   revalidatePath("/savings");
   revalidatePath("/");
+  revalidateHousehold();
 }

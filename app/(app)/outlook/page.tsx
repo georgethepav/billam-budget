@@ -1,4 +1,4 @@
-import { getOutlookModel } from "@/lib/queries";
+import { getOutlookModel } from "@/lib/queries-cached";
 import {
   Card,
   CardContent,

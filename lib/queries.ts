@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, gte, lte, sql, ilike, ne } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lte, sql, ilike, ne, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
   bankAccounts,
@@ -146,25 +146,49 @@ export async function getSavingsGoalsWithProgress() {
   });
 }
 
-async function spendForCategory(
-  category: string,
+// One grouped query for spend-by-category in a date range, instead of N
+// sequential spendForCategory() round trips. Returns category -> pence.
+async function spendMapForRange(
   start: string,
   end: string
-): Promise<number> {
+): Promise<Map<string, number>> {
   const rows = await db
     .select({
+      category: transactions.category,
       total: sql<number>`coalesce(sum(case when ${transactions.amountPence} < 0 then -${transactions.amountPence} else 0 end), 0)`,
     })
     .from(transactions)
     .where(
       and(
-        eq(transactions.category, category),
         eq(transactions.isExcluded, false),
         gte(transactions.transactionDate, start),
         lte(transactions.transactionDate, end)
       )
-    );
-  return Number(rows[0]?.total ?? 0);
+    )
+    .groupBy(transactions.category);
+  const m = new Map<string, number>();
+  for (const r of rows) if (r.category) m.set(r.category, Number(r.total));
+  return m;
+}
+
+// Same, but everything on/after `since` (no upper bound).
+async function spendMapSince(since: string): Promise<Map<string, number>> {
+  const rows = await db
+    .select({
+      category: transactions.category,
+      total: sql<number>`coalesce(sum(case when ${transactions.amountPence} < 0 then -${transactions.amountPence} else 0 end), 0)`,
+    })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.isExcluded, false),
+        gte(transactions.transactionDate, since)
+      )
+    )
+    .groupBy(transactions.category);
+  const m = new Map<string, number>();
+  for (const r of rows) if (r.category) m.set(r.category, Number(r.total));
+  return m;
 }
 
 export async function getBudgetTargets() {
@@ -174,21 +198,18 @@ export async function getBudgetTargets() {
 export async function getWeeklyTracker(period: "this" | "last" = "last") {
   const { start, end } =
     period === "last" ? lastWeekRange() : weekRange();
-  const targets = await getBudgetTargets();
-  const result: {
-    category: string;
-    spentPence: number;
-    weeklyTargetPence: number;
-  }[] = [];
-  for (const cat of ["Eating Out", "Groceries"]) {
+  const [targets, spend] = await Promise.all([
+    getBudgetTargets(),
+    spendMapForRange(start, end),
+  ]);
+  const result = ["Eating Out", "Groceries"].map((cat) => {
     const t = targets.find((x) => x.category === cat);
-    const spent = await spendForCategory(cat, start, end);
-    result.push({
+    return {
       category: cat,
-      spentPence: spent,
+      spentPence: spend.get(cat) ?? 0,
       weeklyTargetPence: t?.weeklyTargetPence ?? 0,
-    });
-  }
+    };
+  });
   return { start, end, items: result };
 }
 
@@ -224,23 +245,20 @@ export async function getHeadlines() {
 
 export async function getMonthlyCategorySpend() {
   const { start, end } = monthRange();
-  const targets = await getBudgetTargets();
-  const out: {
-    category: string;
-    spentPence: number;
-    monthlyTargetPence: number;
-    projectedPence: number;
-  }[] = [];
-  for (const cat of VARIABLE_CATEGORIES) {
+  const [targets, spend] = await Promise.all([
+    getBudgetTargets(),
+    spendMapForRange(start, end),
+  ]);
+  const out = VARIABLE_CATEGORIES.map((cat) => {
     const t = targets.find((x) => x.category === cat);
-    const spent = await spendForCategory(cat, start, end);
-    out.push({
+    const spent = spend.get(cat) ?? 0;
+    return {
       category: cat,
       spentPence: spent,
       monthlyTargetPence: t?.monthlyTargetPence ?? 0,
       projectedPence: projectMonthEnd(spent),
-    });
-  }
+    };
+  });
   return { start, end, items: out };
 }
 
@@ -439,6 +457,43 @@ export async function getCategoryMonthlySeries(category: string, months = 6) {
   return rows.reverse().map((r) => ({ month: r.month, pence: Number(r.total) }));
 }
 
+// Monthly net spend for several categories at once (one grouped query),
+// returning the last `months` per category. Replaces N sequential calls.
+export async function getCategoryMonthlySeriesBulk(
+  categories: string[],
+  months = 6
+): Promise<Record<string, { month: string; pence: number }[]>> {
+  const out: Record<string, { month: string; pence: number }[]> = {};
+  for (const c of categories) out[c] = [];
+  if (categories.length === 0) return out;
+
+  const rows = await db
+    .select({
+      category: transactions.category,
+      month: sql<string>`to_char(${transactions.transactionDate}::date, 'YYYY-MM')`,
+      total: sql<number>`coalesce(sum(case when ${transactions.amountPence} < 0 then -${transactions.amountPence} else 0 end), 0)`,
+    })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.isExcluded, false),
+        inArray(transactions.category, categories)
+      )
+    )
+    .groupBy(transactions.category, sql`2`)
+    .orderBy(sql`2 asc`);
+
+  for (const r of rows) {
+    if (!r.category) continue;
+    (out[r.category] ??= []).push({
+      month: r.month,
+      pence: Number(r.total),
+    });
+  }
+  for (const c of Object.keys(out)) out[c] = out[c].slice(-months);
+  return out;
+}
+
 export async function getAppleBills() {
   return db
     .select({
@@ -472,27 +527,18 @@ export async function getInsightsComparison() {
     sixMonthAvg: number;
   }[] = [];
 
+  const [tmMap, lmMap, sixMap] = await Promise.all([
+    spendMapForRange(thisMonth.start, thisMonth.end),
+    spendMapForRange(lastMonth.start, lastMonth.end),
+    spendMapSince(sixMonthsAgo.toISOString().slice(0, 10)),
+  ]);
+
   for (const cat of cats) {
     if (cat === "Income" || cat === "Transfer" || cat === "Uncategorised")
       continue;
-    const tm = await spendForCategory(cat, thisMonth.start, thisMonth.end);
-    const lm = await spendForCategory(cat, lastMonth.start, lastMonth.end);
-    const sixRows = await db
-      .select({
-        total: sql<number>`coalesce(sum(case when ${transactions.amountPence} < 0 then -${transactions.amountPence} else 0 end), 0)`,
-      })
-      .from(transactions)
-      .where(
-        and(
-          eq(transactions.category, cat),
-          eq(transactions.isExcluded, false),
-          gte(
-            transactions.transactionDate,
-            sixMonthsAgo.toISOString().slice(0, 10)
-          )
-        )
-      );
-    const sixTotal = Number(sixRows[0]?.total ?? 0);
+    const tm = tmMap.get(cat) ?? 0;
+    const lm = lmMap.get(cat) ?? 0;
+    const sixTotal = sixMap.get(cat) ?? 0;
     if (tm === 0 && lm === 0 && sixTotal === 0) continue;
     out.push({
       category: cat,

@@ -5,6 +5,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { transactions, categoryRules } from "@/db/schema";
 import { categorise } from "@/lib/categorise";
+import { revalidateHousehold } from "@/lib/cache";
 
 export async function updateTransactionCategory(
   id: string,
@@ -17,6 +18,7 @@ export async function updateTransactionCategory(
     .where(eq(transactions.id, id));
   revalidatePath("/transactions");
   revalidatePath("/");
+  revalidateHousehold();
 }
 
 export async function toggleTransactionExcluded(id: string, excluded: boolean) {
@@ -26,6 +28,7 @@ export async function toggleTransactionExcluded(id: string, excluded: boolean) {
     .where(eq(transactions.id, id));
   revalidatePath("/transactions");
   revalidatePath("/");
+  revalidateHousehold();
 }
 
 export async function updateTransactionNotes(id: string, notes: string) {
@@ -34,6 +37,7 @@ export async function updateTransactionNotes(id: string, notes: string) {
     .set({ notes: notes.trim() || null })
     .where(eq(transactions.id, id));
   revalidatePath("/transactions");
+  revalidateHousehold();
 }
 
 export async function createRuleFromTransaction(input: {
@@ -74,6 +78,7 @@ export async function createRuleFromTransaction(input: {
 
   revalidatePath("/transactions");
   revalidatePath("/");
+  revalidateHousehold();
 }
 
 // Re-run categorisation over all non-manually-categorised transactions.
@@ -113,5 +118,6 @@ export async function recategoriseAll(): Promise<{ updated: number }> {
   }
   revalidatePath("/transactions");
   revalidatePath("/");
+  revalidateHousehold();
   return { updated };
 }

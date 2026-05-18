@@ -3,7 +3,7 @@ import {
   getTopSpendsThisWeek,
   getSubscriptions,
   getAppleBills,
-} from "@/lib/queries";
+} from "@/lib/queries-cached";
 import { formatPence } from "@/lib/money";
 import { formatDisplayDate } from "@/lib/dates";
 import { ArrowDown, ArrowUp, Minus } from "lucide-react";

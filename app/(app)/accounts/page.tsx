@@ -1,4 +1,4 @@
-import { getAccountStats } from "@/lib/queries";
+import { getAccountStats } from "@/lib/queries-cached";
 import { AccountsView } from "./accounts-view";
 
 export const metadata = { title: "Accounts - Billam Family Budget" };

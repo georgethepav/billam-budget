@@ -1,7 +1,7 @@
 import {
   getAccounts,
   getRecentImports,
-} from "@/lib/queries";
+} from "@/lib/queries-cached";
 import { formatDisplayDate } from "@/lib/dates";
 import {
   Card,

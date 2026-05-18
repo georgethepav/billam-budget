@@ -19,7 +19,7 @@ import {
   getDaysSinceLastUpload,
   getCategoryOptions,
   getUncategorised,
-} from "@/lib/queries";
+} from "@/lib/queries-cached";
 import { formatPence, formatPenceCompact } from "@/lib/money";
 import { formatDisplayDate, formatDayDate } from "@/lib/dates";
 import { balanceStatus, STATUS_TEXT } from "@/lib/status";

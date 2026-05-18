@@ -6,6 +6,7 @@ import { transactions, csvImports, categoryRules } from "@/db/schema";
 import { parseCsv, type CsvFormat } from "@/lib/csv";
 import { categorise } from "@/lib/categorise";
 import { asc } from "drizzle-orm";
+import { revalidateHousehold } from "@/lib/cache";
 
 export type ImportPreview = {
   accountId: string;
@@ -147,6 +148,7 @@ export async function commitImport(
   revalidatePath("/");
   revalidatePath("/transactions");
   revalidatePath("/upload");
+  revalidateHousehold();
 
   return {
     imported,

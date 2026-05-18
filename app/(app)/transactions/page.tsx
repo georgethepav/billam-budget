@@ -3,7 +3,7 @@ import {
   getAccounts,
   getCategoryOptions,
   type TxFilters,
-} from "@/lib/queries";
+} from "@/lib/queries-cached";
 import { poundsToPence } from "@/lib/money";
 import { TransactionsView } from "./transactions-view";
 

@@ -4,11 +4,11 @@ import {
   getBudgetActualsThisMonth,
   getWeeklyTracker,
   getMonthlyCategorySpend,
-  getCategoryMonthlySeries,
+  getCategoryMonthlySeriesBulk,
   getAppleBillGroups,
   getOutlookModel,
   VARIABLE_CATEGORIES,
-} from "@/lib/queries";
+} from "@/lib/queries-cached";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -41,10 +41,10 @@ export default async function BudgetPage() {
   const fixed = targets.filter((t) => t.type === "fixed");
   const variable = targets.filter((t) => t.type === "variable");
 
-  const series: Record<string, { month: string; pence: number }[]> = {};
-  for (const cat of VARIABLE_CATEGORIES) {
-    series[cat] = await getCategoryMonthlySeries(cat, 6);
-  }
+  const series = await getCategoryMonthlySeriesBulk(
+    [...VARIABLE_CATEGORIES],
+    6
+  );
 
   const actualsObj: Record<string, number> = {};
   for (const [k, v] of actuals) actualsObj[k] = v;

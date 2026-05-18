@@ -14,6 +14,7 @@ import {
 import { hashPassword } from "@/lib/auth";
 import { destroySession } from "@/lib/session";
 import { setIncomeOverridePence } from "@/lib/settings";
+import { revalidateHousehold } from "@/lib/cache";
 
 // Set (or clear, with null) the projected monthly income override used by the
 // Outlook projection. Clearing falls back to the historical average.
@@ -22,6 +23,7 @@ export async function setProjectedIncome(pence: number | null) {
   revalidatePath("/outlook");
   revalidatePath("/budget");
   revalidatePath("/");
+  revalidateHousehold();
 }
 
 // We cannot rewrite Vercel env vars at runtime, so changing the password
@@ -46,6 +48,7 @@ export async function deleteAllTransactions(confirm: string) {
   await db.delete(csvImports);
   revalidatePath("/");
   revalidatePath("/transactions");
+  revalidateHousehold();
 }
 
 export async function deleteAllData(confirm: string) {
@@ -60,4 +63,5 @@ export async function deleteAllData(confirm: string) {
   await db.delete(budgetTargets);
   await db.delete(categoryRules);
   revalidatePath("/");
+  revalidateHousehold();
 }

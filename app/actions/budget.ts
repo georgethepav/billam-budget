@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { budgetTargets, subscriptions } from "@/db/schema";
 import { BUDGET_START } from "@/lib/dates";
+import { revalidateHousehold } from "@/lib/cache";
 
 export async function updateBudgetTarget(
   id: string,
@@ -16,6 +17,7 @@ export async function updateBudgetTarget(
     .set({ monthlyTargetPence, weeklyTargetPence })
     .where(eq(budgetTargets.id, id));
   revalidatePath("/budget");
+  revalidateHousehold();
   revalidatePath("/");
 }
 
@@ -30,6 +32,7 @@ export async function updateBudgetMonthly(
     .set({ monthlyTargetPence })
     .where(eq(budgetTargets.id, id));
   revalidatePath("/budget");
+  revalidateHousehold();
   revalidatePath("/outlook");
   revalidatePath("/");
 }
@@ -50,11 +53,13 @@ export async function addBudgetTarget(input: {
     activeFrom: BUDGET_START,
   });
   revalidatePath("/budget");
+  revalidateHousehold();
 }
 
 export async function deleteBudgetTarget(id: string) {
   await db.delete(budgetTargets).where(eq(budgetTargets.id, id));
   revalidatePath("/budget");
+  revalidateHousehold();
 }
 
 export async function updateSubscription(
@@ -63,6 +68,7 @@ export async function updateSubscription(
 ) {
   await db.update(subscriptions).set(patch).where(eq(subscriptions.id, id));
   revalidatePath("/budget");
+  revalidateHousehold();
   revalidatePath("/insights");
 }
 
@@ -74,11 +80,13 @@ export async function addSubscription(input: {
 }) {
   await db.insert(subscriptions).values(input);
   revalidatePath("/budget");
+  revalidateHousehold();
   revalidatePath("/insights");
 }
 
 export async function deleteSubscription(id: string) {
   await db.delete(subscriptions).where(eq(subscriptions.id, id));
   revalidatePath("/budget");
+  revalidateHousehold();
   revalidatePath("/insights");
 }

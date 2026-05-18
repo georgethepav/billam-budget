@@ -2,7 +2,7 @@ import {
   getSavingsGoalsWithProgress,
   getSavingsTransfers,
   getTotalSaved,
-} from "@/lib/queries";
+} from "@/lib/queries-cached";
 import { SavingsView } from "./savings-view";
 
 export const metadata = { title: "Savings - Billam Family Budget" };

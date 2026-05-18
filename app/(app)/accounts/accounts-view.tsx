@@ -108,7 +108,7 @@ function AddAccountDialog() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [type, setType] = useState("current");
-  const [format, setFormat] = useState("lloyds");
+  const [format, setFormat] = useState("halifax");
   const [sortCode, setSortCode] = useState("");
   const [last4, setLast4] = useState("");
   const [excluded, setExcluded] = useState(false);

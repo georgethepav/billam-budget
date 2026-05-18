@@ -86,7 +86,7 @@ export default async function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Lloyds Joint</CardDescription>
+            <CardDescription>Halifax</CardDescription>
             <CardTitle
               className={cn(
                 "text-2xl tabular-nums sm:text-3xl",

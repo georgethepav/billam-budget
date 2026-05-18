@@ -225,9 +225,9 @@ async function main() {
   if (existingAccounts.length === 0) {
     await db.insert(bankAccounts).values([
       {
-        accountName: "Lloyds Joint",
+        accountName: "Halifax",
         accountType: "current",
-        csvFormat: "lloyds",
+        csvFormat: "halifax",
         sortCode: "11-12-80",
       },
       {

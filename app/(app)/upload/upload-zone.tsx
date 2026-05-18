@@ -50,12 +50,12 @@ export function UploadZone({ accounts }: { accounts: AccountOpt[] }) {
   const [files, setFiles] = useState<FileState[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const defaultAccount =
-    accounts.find((a) => a.name === "Lloyds Joint")?.id ?? accounts[0]?.id ?? "";
+    accounts.find((a) => a.name === "Halifax")?.id ?? accounts[0]?.id ?? "";
 
   const runPreview = useCallback(
     async (key: string, accountId: string, filename: string, content: string) => {
       const acc = accounts.find((a) => a.id === accountId);
-      const format = (acc?.csvFormat ?? "lloyds") as CsvFormat;
+      const format = (acc?.csvFormat ?? "halifax") as CsvFormat;
       try {
         const preview = await previewImport(accountId, filename, format, content);
         setFiles((prev) =>
@@ -144,7 +144,7 @@ export function UploadZone({ accounts }: { accounts: AccountOpt[] }) {
     const f = files.find((x) => x.key === key);
     if (!f) return;
     const acc = accounts.find((a) => a.id === f.accountId);
-    const format = (acc?.csvFormat ?? "lloyds") as CsvFormat;
+    const format = (acc?.csvFormat ?? "halifax") as CsvFormat;
     setFiles((prev) =>
       prev.map((x) => (x.key === key ? { ...x, status: "importing" } : x))
     );

@@ -100,7 +100,7 @@ export function DashboardAlerts({
   if (lloydsBalancePence < 10000) {
     banners.push(
       <Banner key="balance" level="danger">
-        Lloyds Joint balance is {formatPence(lloydsBalancePence)}. Consider
+        Halifax balance is {formatPence(lloydsBalancePence)}. Consider
         transferring from savings.
       </Banner>
     );

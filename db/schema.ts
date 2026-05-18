@@ -13,7 +13,7 @@ export const bankAccounts = pgTable("bank_accounts", {
   id: uuid("id").primaryKey().defaultRandom(),
   accountName: text("account_name").notNull(),
   accountType: text("account_type").notNull(), // "current" | "savings"
-  csvFormat: text("csv_format").default("lloyds").notNull(), // "lloyds" | "halifax" | "monzo"
+  csvFormat: text("csv_format").default("halifax").notNull(), // "lloyds" | "halifax" | "monzo"
   sortCode: text("sort_code"),
   accountNumberLast4: text("account_number_last4"),
   isExcludedFromHouseholdTotals: boolean("is_excluded_from_household_totals")

@@ -4,6 +4,8 @@ import { db } from "@/db";
 import { transactions, bankAccounts } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 function csvCell(value: string | number | null): string {
   const s = value == null ? "" : String(value);
   if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;

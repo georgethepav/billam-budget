@@ -17,11 +17,25 @@ async function parseContent(
   format: CsvFormat,
   content: string
 ): Promise<ParseResult> {
-  if (kind === "pdf") {
-    const bytes = new Uint8Array(Buffer.from(content, "base64"));
-    return parsePdfStatement(bytes);
+  try {
+    if (kind === "pdf") {
+      const bytes = new Uint8Array(Buffer.from(content, "base64"));
+      return await parsePdfStatement(bytes);
+    }
+    return parseCsv(content, format);
+  } catch (e) {
+    return {
+      rows: [],
+      detectedSortCode: null,
+      minDate: null,
+      maxDate: null,
+      errors: [
+        `Failed to read the ${kind.toUpperCase()}: ${
+          e instanceof Error ? e.message : String(e)
+        }`,
+      ],
+    };
   }
-  return parseCsv(content, format);
 }
 
 type ExistingRow = {

@@ -51,12 +51,47 @@ export async function parsePdfStatement(
   let maxDate: string | null = null;
   const out: ParsedRow[] = [];
 
-  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const doc = await pdfjs.getDocument({
-    data,
-    isEvalSupported: false,
-    useSystemFonts: true,
-  }).promise;
+  let pdfjs: typeof import("pdfjs-dist/legacy/build/pdf.mjs");
+  try {
+    pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  } catch (e) {
+    return {
+      rows: [],
+      detectedSortCode: null,
+      minDate: null,
+      maxDate: null,
+      errors: [
+        `PDF engine failed to load: ${
+          e instanceof Error ? e.message : String(e)
+        }`,
+      ],
+    };
+  }
+
+  let doc;
+  try {
+    doc = await pdfjs.getDocument({
+      data,
+      isEvalSupported: false,
+      // No fonts/canvas needed for text extraction; enabling them is what
+      // tends to break in a serverless runtime.
+      useSystemFonts: false,
+      disableFontFace: true,
+      verbosity: 0,
+    }).promise;
+  } catch (e) {
+    return {
+      rows: [],
+      detectedSortCode: null,
+      minDate: null,
+      maxDate: null,
+      errors: [
+        `Could not open the PDF: ${
+          e instanceof Error ? e.message : String(e)
+        }. Is it a real Halifax statement PDF (not a scan/image)?`,
+      ],
+    };
+  }
 
   // Column x-anchors taken from the header row; sensible fallbacks if a page
   // is missing the header.

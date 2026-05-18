@@ -76,6 +76,11 @@ export function formatDisplayDate(iso: string): string {
   return format(new Date(iso), "d MMM yyyy");
 }
 
+// Includes the weekday so a week range is unambiguous, e.g. "Mon 11 May".
+export function formatDayDate(iso: string): string {
+  return format(new Date(iso), "EEE d MMM");
+}
+
 export function formatMonthLabel(iso: string): string {
   return format(new Date(iso), "MMM yyyy");
 }

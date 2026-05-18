@@ -21,7 +21,7 @@ import {
   getUncategorised,
 } from "@/lib/queries";
 import { formatPence, formatPenceCompact } from "@/lib/money";
-import { formatDisplayDate } from "@/lib/dates";
+import { formatDisplayDate, formatDayDate } from "@/lib/dates";
 import { balanceStatus, STATUS_TEXT } from "@/lib/status";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
@@ -50,7 +50,7 @@ export default async function DashboardPage() {
     getHouseholdPosition(),
     getSavingsGoalsWithProgress(),
     getWeeklyHealth(),
-    getWeeklyTracker("this"),
+    getWeeklyTracker("last"),
     getMonthlyCategorySpend(),
     getHeadlines(),
     getRecentTransactions(10),
@@ -70,7 +70,7 @@ export default async function DashboardPage() {
           Dashboard
         </h1>
         <p className="text-sm text-muted-foreground">
-          How this week is going, and what needs a look.
+          How last week went, and what needs a look.
         </p>
       </header>
 
@@ -80,9 +80,9 @@ export default async function DashboardPage() {
           <HealthRing
             spentPence={health.spentPence}
             targetPence={health.targetPence}
-            caption={`${formatDisplayDate(health.start)} – ${formatDisplayDate(
+            caption={`Last week · ${formatDayDate(health.start)} – ${formatDayDate(
               health.end
-            )}`}
+            )} ${health.end.slice(0, 4)}`}
           />
           <div className="grid grid-cols-3 gap-2 border-t pt-3 text-center">
             <div>
@@ -152,17 +152,17 @@ export default async function DashboardPage() {
 
       <HubCard
         title="Headlines"
-        description="Biggest spends and overspends this week."
+        description="Biggest spends and overspends last week."
         icon={
           <Newspaper className="h-5 w-5 text-muted-foreground" />
         }
       >
-        <div className="space-y-5">
+        <div className="grid gap-6 sm:grid-cols-2">
           <div>
-            <p className="mb-2 text-sm font-medium">Over budget this week</p>
+            <p className="mb-2 text-sm font-medium">Over budget last week</p>
             {headlines.overspent.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Nothing over its weekly target. Nice.
+                Nothing over its weekly target last week. Nice.
               </p>
             ) : (
               <ul className="space-y-2">
@@ -188,10 +188,10 @@ export default async function DashboardPage() {
             )}
           </div>
           <div>
-            <p className="mb-2 text-sm font-medium">Biggest spends this week</p>
+            <p className="mb-2 text-sm font-medium">Biggest spends last week</p>
             {headlines.topSpends.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No spending recorded this week yet.
+                No spending recorded last week.
               </p>
             ) : (
               <ul className="divide-y">
@@ -220,10 +220,10 @@ export default async function DashboardPage() {
       </HubCard>
 
       <HubCard
-        title="The week"
-        description={`${formatDisplayDate(week.start)} – ${formatDisplayDate(
+        title="Last week"
+        description={`${formatDayDate(week.start)} – ${formatDayDate(
           week.end
-        )}`}
+        )} ${week.end.slice(0, 4)}`}
         icon={
           <CalendarRange className="h-5 w-5 text-muted-foreground" />
         }

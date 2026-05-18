@@ -182,10 +182,11 @@ export async function getWeeklyTracker(period: "this" | "last" = "last") {
   return { start, end, items: result };
 }
 
-// This-week (current, in-progress) variable spend vs weekly target. Drives the
-// dashboard health ring: a single good/warn/over/danger read for the week.
+// Last week's variable spend vs weekly target. The household uploads the
+// previous week's export, so last week is the complete, meaningful read that
+// drives the dashboard health ring (good/warn/over/danger).
 export async function getWeeklyHealth() {
-  const w = await getWeeklyTracker("this");
+  const w = await getWeeklyTracker("last");
   const spentPence = w.items.reduce((a, i) => a + i.spentPence, 0);
   const targetPence = w.items.reduce((a, i) => a + i.weeklyTargetPence, 0);
   return { start: w.start, end: w.end, spentPence, targetPence, items: w.items };
@@ -195,8 +196,8 @@ export async function getWeeklyHealth() {
 // category already over its weekly target.
 export async function getHeadlines() {
   const [topSpends, week] = await Promise.all([
-    getTopSpendsThisWeek(5),
-    getWeeklyTracker("this"),
+    getTopSpendsLastWeek(5),
+    getWeeklyTracker("last"),
   ]);
   const overspent = week.items
     .filter(
@@ -488,8 +489,11 @@ export async function getInsightsComparison() {
   return out.sort((a, b) => b.thisMonth - a.thisMonth);
 }
 
-export async function getTopSpendsThisWeek(limit = 10) {
-  const { start, end } = weekRange();
+export async function getTopSpendsThisWeek(
+  limit = 10,
+  period: "this" | "last" = "this"
+) {
+  const { start, end } = period === "last" ? lastWeekRange() : weekRange();
   return db
     .select({
       transactionDate: transactions.transactionDate,
@@ -508,6 +512,10 @@ export async function getTopSpendsThisWeek(limit = 10) {
     )
     .orderBy(asc(transactions.amountPence))
     .limit(limit);
+}
+
+export function getTopSpendsLastWeek(limit = 10) {
+  return getTopSpendsThisWeek(limit, "last");
 }
 
 // This-month actual for a budget target, matched by category OR subcategory

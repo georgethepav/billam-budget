@@ -9,8 +9,10 @@ import {
   getDaysInMonth,
 } from "date-fns";
 
-// UK weeks start Monday.
-const WEEK_OPTS = { weekStartsOn: 1 as const };
+// Budget weeks run Tuesday -> Monday. Weekend spend often posts on the
+// Monday, so a Tue-Mon week keeps a whole weekend together. (date-fns:
+// 0=Sun, 1=Mon, 2=Tue ...)
+const WEEK_OPTS = { weekStartsOn: 2 as const };
 
 // The household budget tracking starts here.
 export const BUDGET_START = "2026-06-01";
@@ -43,7 +45,7 @@ export function weekRange(ref: Date = new Date()): {
   };
 }
 
-// The most recently completed Mon-Sun week. The household uploads last week's
+// The most recently completed Tue-Mon week. The household uploads last week's
 // export, so "this week" is usually empty - last week is the useful view.
 export function lastWeekRange(ref: Date = new Date()): {
   start: string;
@@ -77,8 +79,8 @@ export function daysLeftInMonth(ref: Date = new Date()): number {
   return getDaysInMonth(ref) - ref.getDate();
 }
 
-// Whole days from `ref` through the end of its (Mon-Sun) week, inclusive of
-// today. e.g. Sunday -> 1, Saturday -> 2, Monday -> 7.
+// Whole days from `ref` through the end of its (Tue-Mon) week, inclusive of
+// today. e.g. Monday -> 1, Sunday -> 2, Tuesday -> 7.
 export function daysLeftInWeek(ref: Date = new Date()): number {
   const end = endOfWeek(ref, WEEK_OPTS);
   return differenceInCalendarDays(end, ref) + 1;

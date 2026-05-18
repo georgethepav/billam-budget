@@ -9,7 +9,7 @@ type Item = {
 };
 
 // Current week so far: how much is spent and, the headline, how much is left
-// to spend on each tracked item before the week ends on Sunday.
+// to spend on each tracked item before the week ends on Monday.
 export function ThisWeek({
   items,
   daysLeft,
@@ -23,7 +23,7 @@ export function ThisWeek({
         {daysLeft === 1
           ? "Last day of the week"
           : `${daysLeft} days left this week`}{" "}
-        (resets Monday)
+        (Tue–Mon, resets Tuesday)
       </p>
       {items.map((w) => {
         const status = spendStatus(w.spentPence, w.weeklyTargetPence);

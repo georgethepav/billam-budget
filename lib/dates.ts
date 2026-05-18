@@ -33,6 +33,17 @@ export function weekRange(ref: Date = new Date()): {
   };
 }
 
+// The most recently completed Mon-Sun week. The household uploads last week's
+// export, so "this week" is usually empty - last week is the useful view.
+export function lastWeekRange(ref: Date = new Date()): {
+  start: string;
+  end: string;
+} {
+  const sevenDaysAgo = new Date(ref);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  return weekRange(sevenDaysAgo);
+}
+
 export function monthRange(ref: Date = new Date()): {
   start: string;
   end: string;

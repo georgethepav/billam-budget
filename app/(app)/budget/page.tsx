@@ -22,7 +22,7 @@ export default async function BudgetPage() {
       getBudgetTargets(),
       getSubscriptions(),
       getBudgetActualsThisMonth(),
-      getWeeklyTracker(),
+      getWeeklyTracker("this"),
       getMonthlyCategorySpend(),
       getAppleBillGroups(),
     ]);

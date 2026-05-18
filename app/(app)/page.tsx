@@ -7,6 +7,7 @@ import {
   getRecentTransactions,
   getDaysSinceLastUpload,
   getCategoryOptions,
+  getUncategorised,
 } from "@/lib/queries";
 import { formatPence, formatPenceCompact } from "@/lib/money";
 import { formatDisplayDate } from "@/lib/dates";
@@ -19,17 +20,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { SpendBar } from "@/components/spend-bar";
 import { CategorySelect } from "@/components/category-select";
 import { DashboardAlerts } from "@/components/alerts";
+import { UncategorisedPanel } from "@/components/uncategorised-panel";
+import { CategoryDonut } from "@/components/dashboard-charts";
 
 export const metadata = { title: "Dashboard - Billam Family Budget" };
 
@@ -42,27 +37,44 @@ export default async function DashboardPage() {
     recent,
     daysSinceUpload,
     categoryOptions,
+    uncategorised,
   ] = await Promise.all([
     getHouseholdPosition(),
     getSavingsGoalsWithProgress(),
-    getWeeklyTracker(),
+    getWeeklyTracker("last"),
     getMonthlyCategorySpend(),
     getRecentTransactions(10),
     getDaysSinceLastUpload(),
     getCategoryOptions(),
+    getUncategorised(30),
   ]);
 
   const balStatus = balanceStatus(position.lloydsBalancePence);
   const heroGoals = goals.slice(0, 3);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-5">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+          Dashboard
+        </h1>
         <p className="text-sm text-muted-foreground">
-          Household position and this period&apos;s spend.
+          Sort uncategorised first, then review the numbers.
         </p>
       </header>
+
+      <UncategorisedPanel
+        rows={uncategorised.rows.map((r) => ({
+          id: r.id,
+          transactionDate: r.transactionDate,
+          description: r.description,
+          amountPence: r.amountPence,
+          accountName: r.accountName,
+        }))}
+        total={uncategorised.total}
+        days={uncategorised.days}
+        options={categoryOptions}
+      />
 
       <DashboardAlerts
         daysSinceUpload={daysSinceUpload}
@@ -71,13 +83,13 @@ export default async function DashboardPage() {
         lloydsBalancePence={position.lloydsBalancePence}
       />
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Lloyds Joint</CardDescription>
             <CardTitle
               className={cn(
-                "text-3xl tabular-nums",
+                "text-2xl tabular-nums sm:text-3xl",
                 STATUS_TEXT[balStatus]
               )}
             >
@@ -91,7 +103,7 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Savings total</CardDescription>
-            <CardTitle className="text-3xl tabular-nums">
+            <CardTitle className="text-2xl tabular-nums sm:text-3xl">
               {formatPence(position.savingsBalancePence)}
             </CardTitle>
           </CardHeader>
@@ -102,7 +114,7 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Net position</CardDescription>
-            <CardTitle className="text-3xl tabular-nums">
+            <CardTitle className="text-2xl tabular-nums sm:text-3xl">
               {formatPence(position.netPositionPence)}
             </CardTitle>
           </CardHeader>
@@ -112,12 +124,12 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-3">
         {heroGoals.map((g) => (
           <Card key={g.id} className={g.complete ? "border-emerald-500" : ""}>
             <CardHeader className="pb-2">
               <CardDescription>{g.name}</CardDescription>
-              <CardTitle className="text-xl tabular-nums">
+              <CardTitle className="text-lg tabular-nums sm:text-xl">
                 {g.complete ? (
                   <span className="text-emerald-600 dark:text-emerald-400">
                     {g.name === "Overdraft clear"
@@ -152,10 +164,10 @@ export default async function DashboardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">This week</CardTitle>
+          <CardTitle className="text-base">Last week</CardTitle>
           <CardDescription>
             {formatDisplayDate(weekly.start)} to{" "}
-            {formatDisplayDate(weekly.end)}
+            {formatDisplayDate(weekly.end)} - the most recent complete week
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -170,25 +182,44 @@ export default async function DashboardPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">This month&apos;s spend</CardTitle>
-          <CardDescription>
-            Month to date, target, and projected end of month.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {monthly.items.map((m) => (
-            <SpendBar
-              key={m.category}
-              label={m.category}
-              spentPence={m.spentPence}
-              targetPence={m.monthlyTargetPence}
-              projectedPence={m.projectedPence}
+      <div className="grid gap-5 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">This month by category</CardTitle>
+            <CardDescription>Where the money has gone.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CategoryDonut
+              items={monthly.items.map((m) => ({
+                category: m.category,
+                spentPence: m.spentPence,
+              }))}
             />
-          ))}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              This month vs target
+            </CardTitle>
+            <CardDescription>
+              Month to date and projected end of month.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {monthly.items.map((m) => (
+              <SpendBar
+                key={m.category}
+                label={m.category}
+                spentPence={m.spentPence}
+                targetPence={m.monthlyTargetPence}
+                projectedPence={m.projectedPence}
+              />
+            ))}
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -209,45 +240,39 @@ export default async function DashboardPage() {
               No transactions yet. Upload a CSV to get started.
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead>Category</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recent.map((t) => (
-                  <TableRow key={t.id}>
-                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                      {formatDisplayDate(t.transactionDate)}
-                    </TableCell>
-                    <TableCell className="max-w-[220px] truncate text-sm">
+            <ul className="divide-y">
+              {recent.map((t) => (
+                <li
+                  key={t.id}
+                  className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:gap-4"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
                       {t.description}
-                    </TableCell>
-                    <TableCell
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDisplayDate(t.transactionDate)} - {t.accountName}
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 sm:justify-end">
+                    <span
                       className={cn(
-                        "text-right tabular-nums text-sm",
-                        t.amountPence < 0
-                          ? "text-foreground"
-                          : "text-emerald-600 dark:text-emerald-400"
+                        "tabular-nums text-sm",
+                        t.amountPence >= 0 &&
+                          "text-emerald-600 dark:text-emerald-400"
                       )}
                     >
                       {formatPence(t.amountPence)}
-                    </TableCell>
-                    <TableCell>
-                      <CategorySelect
-                        id={t.id}
-                        value={t.category}
-                        options={categoryOptions}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    </span>
+                    <CategorySelect
+                      id={t.id}
+                      value={t.category}
+                      options={categoryOptions}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
           )}
         </CardContent>
       </Card>

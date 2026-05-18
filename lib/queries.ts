@@ -11,7 +11,13 @@ import {
   categoryRules,
   csvImports,
 } from "@/db/schema";
-import { weekRange, monthRange, projectMonthEnd } from "./dates";
+import {
+  weekRange,
+  lastWeekRange,
+  monthRange,
+  projectMonthEnd,
+  isoDate,
+} from "./dates";
 
 export const VARIABLE_CATEGORIES = [
   "Groceries",
@@ -155,8 +161,9 @@ export async function getBudgetTargets() {
   return db.select().from(budgetTargets).orderBy(asc(budgetTargets.category));
 }
 
-export async function getWeeklyTracker() {
-  const { start, end } = weekRange();
+export async function getWeeklyTracker(period: "this" | "last" = "last") {
+  const { start, end } =
+    period === "last" ? lastWeekRange() : weekRange();
   const targets = await getBudgetTargets();
   const result: {
     category: string;
@@ -213,6 +220,44 @@ export async function getRecentTransactions(limit = 10) {
     .innerJoin(bankAccounts, eq(transactions.accountId, bankAccounts.id))
     .orderBy(desc(transactions.transactionDate), desc(transactions.createdAt))
     .limit(limit);
+}
+
+// Uncategorised transactions in the last `days` days. This is the main daily
+// driver: nothing can be tracked until it is categorised.
+export async function getUncategorised(days = 30) {
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  const sinceIso = isoDate(since);
+  const where = and(
+    eq(transactions.category, "Uncategorised"),
+    eq(transactions.isExcluded, false),
+    gte(transactions.transactionDate, sinceIso)
+  );
+  const [rows, countRows] = await Promise.all([
+    db
+      .select({
+        id: transactions.id,
+        transactionDate: transactions.transactionDate,
+        description: transactions.description,
+        amountPence: transactions.amountPence,
+        category: transactions.category,
+        accountName: bankAccounts.accountName,
+      })
+      .from(transactions)
+      .innerJoin(bankAccounts, eq(transactions.accountId, bankAccounts.id))
+      .where(where)
+      .orderBy(desc(transactions.transactionDate))
+      .limit(50),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(transactions)
+      .where(where),
+  ]);
+  return {
+    days,
+    total: Number(countRows[0]?.count ?? 0),
+    rows,
+  };
 }
 
 export async function getDaysSinceLastUpload(): Promise<number | null> {

@@ -6,10 +6,20 @@ import {
   getMonthlyCategorySpend,
   getCategoryMonthlySeries,
   getAppleBillGroups,
+  getOutlookModel,
   VARIABLE_CATEGORIES,
 } from "@/lib/queries";
+import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { formatDisplayDate } from "@/lib/dates";
+import { OutlookBar } from "@/components/outlook-bar";
 import { FixedCosts } from "./fixed-costs";
 import { SubscriptionsTab } from "./subscriptions-tab";
 import { VariableSpend } from "./variable-spend";
@@ -17,7 +27,7 @@ import { VariableSpend } from "./variable-spend";
 export const metadata = { title: "Budget - Billam Family Budget" };
 
 export default async function BudgetPage() {
-  const [targets, subs, actuals, weekly, monthly, appleGroups] =
+  const [targets, subs, actuals, weekly, monthly, appleGroups, outlook] =
     await Promise.all([
       getBudgetTargets(),
       getSubscriptions(),
@@ -25,6 +35,7 @@ export default async function BudgetPage() {
       getWeeklyTracker("this"),
       getMonthlyCategorySpend(),
       getAppleBillGroups(),
+      getOutlookModel(),
     ]);
 
   const fixed = targets.filter((t) => t.type === "fixed");
@@ -46,6 +57,32 @@ export default async function BudgetPage() {
           Fixed costs, subscriptions and variable spend targets.
         </p>
       </header>
+
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-3">
+          <div>
+            <CardTitle className="text-base">End-of-year outlook</CardTitle>
+            <CardDescription>
+              Projected by {formatDisplayDate(outlook.goalDate)} if the budget
+              below holds.
+            </CardDescription>
+          </div>
+          <Link
+            href="/outlook"
+            className="shrink-0 text-sm text-muted-foreground underline-offset-4 hover:underline"
+          >
+            Adjust →
+          </Link>
+        </CardHeader>
+        <CardContent>
+          <OutlookBar
+            result={outlook.result}
+            goalName={outlook.goalName}
+            goalDate={outlook.goalDate}
+            monthsRemaining={outlook.inputs.monthsRemaining}
+          />
+        </CardContent>
+      </Card>
 
       <Tabs defaultValue="fixed">
         <TabsList>

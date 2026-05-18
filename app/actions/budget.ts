@@ -19,6 +19,21 @@ export async function updateBudgetTarget(
   revalidatePath("/");
 }
 
+// Updates only the monthly target (leaves any weekly target intact). Used by
+// the Outlook what-if where only the monthly variable lever is adjusted.
+export async function updateBudgetMonthly(
+  id: string,
+  monthlyTargetPence: number
+) {
+  await db
+    .update(budgetTargets)
+    .set({ monthlyTargetPence })
+    .where(eq(budgetTargets.id, id));
+  revalidatePath("/budget");
+  revalidatePath("/outlook");
+  revalidatePath("/");
+}
+
 export async function addBudgetTarget(input: {
   category: string;
   monthlyTargetPence: number;

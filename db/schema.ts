@@ -111,6 +111,16 @@ export const subscriptions = pgTable("subscriptions", {
     .notNull(),
 });
 
+// Small key/value store for app-level settings that aren't env vars and don't
+// warrant their own table (e.g. the projected monthly income override).
+export const appSettings = pgTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
 export const csvImports = pgTable("csv_imports", {
   id: uuid("id").primaryKey().defaultRandom(),
   accountId: uuid("account_id")
@@ -134,3 +144,4 @@ export type SavingsGoal = typeof savingsGoals.$inferSelect;
 export type SavingsTransfer = typeof savingsTransfers.$inferSelect;
 export type Subscription = typeof subscriptions.$inferSelect;
 export type CsvImport = typeof csvImports.$inferSelect;
+export type AppSetting = typeof appSettings.$inferSelect;

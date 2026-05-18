@@ -13,6 +13,16 @@ import {
 } from "@/db/schema";
 import { hashPassword } from "@/lib/auth";
 import { destroySession } from "@/lib/session";
+import { setIncomeOverridePence } from "@/lib/settings";
+
+// Set (or clear, with null) the projected monthly income override used by the
+// Outlook projection. Clearing falls back to the historical average.
+export async function setProjectedIncome(pence: number | null) {
+  await setIncomeOverridePence(pence);
+  revalidatePath("/outlook");
+  revalidatePath("/budget");
+  revalidatePath("/");
+}
 
 // We cannot rewrite Vercel env vars at runtime, so changing the password
 // returns the new hash for the user to set as SITE_PASSWORD_HASH. The current

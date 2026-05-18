@@ -5,6 +5,7 @@ import {
   endOfMonth,
   format,
   differenceInCalendarDays,
+  differenceInCalendarMonths,
   getDaysInMonth,
 } from "date-fns";
 
@@ -13,6 +14,15 @@ const WEEK_OPTS = { weekStartsOn: 1 as const };
 
 // The household budget tracking starts here.
 export const BUDGET_START = "2026-06-01";
+
+// Single end-of-year savings target date the Outlook projection runs to.
+export const OUTLOOK_GOAL_DATE = "2026-12-20";
+
+// Whole months remaining between today and the outlook goal date (>= 0).
+// "Full months ahead" - the number of monthly income/spend cycles left.
+export function monthsUntilGoal(ref: Date = new Date()): number {
+  return Math.max(0, differenceInCalendarMonths(new Date(OUTLOOK_GOAL_DATE), ref));
+}
 
 export function now(): Date {
   return new Date();

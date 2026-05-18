@@ -17,7 +17,11 @@ import {
   monthRange,
   projectMonthEnd,
   isoDate,
+  monthsUntilGoal,
+  OUTLOOK_GOAL_DATE,
 } from "./dates";
+import { getIncomeOverridePence } from "./settings";
+import { computeOutlook } from "./outlook";
 
 export const VARIABLE_CATEGORIES = [
   "Groceries",
@@ -581,4 +585,86 @@ export async function getAppleBillTransactions() {
       )
     )
     .orderBy(desc(transactions.transactionDate));
+}
+
+// Average monthly net income from history: total positive "Income" across the
+// distinct months it appears in. 0 if there's no income data yet.
+export async function getAverageMonthlyIncomePence(): Promise<number> {
+  const rows = await db
+    .select({
+      month: sql<string>`to_char(${transactions.transactionDate}::date, 'YYYY-MM')`,
+      total: sql<number>`coalesce(sum(case when ${transactions.amountPence} > 0 then ${transactions.amountPence} else 0 end), 0)`,
+    })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.category, "Income"),
+        eq(transactions.isExcluded, false)
+      )
+    )
+    .groupBy(sql`1`);
+  if (rows.length === 0) return 0;
+  const total = rows.reduce((a, r) => a + Number(r.total), 0);
+  return Math.round(total / rows.length);
+}
+
+// Everything the Outlook projection and its what-if need. Returns the base
+// inputs, the per-variable-category breakdown (the editable lever) and the
+// computed result for the initial server render.
+export async function getOutlookModel() {
+  const [startingSavedPence, targets, goalRows, historical, override] =
+    await Promise.all([
+      getTotalSaved(),
+      getBudgetTargets(),
+      db
+        .select({
+          name: savingsGoals.name,
+          targetPence: savingsGoals.targetPence,
+        })
+        .from(savingsGoals)
+        .where(eq(savingsGoals.isActive, true))
+        .orderBy(asc(savingsGoals.priority))
+        .limit(1),
+      getAverageMonthlyIncomePence(),
+      getIncomeOverridePence(),
+    ]);
+
+  const variableTargets = targets
+    .filter((t) => t.type === "variable")
+    .map((t) => ({
+      id: t.id,
+      category: t.category,
+      monthlyTargetPence: t.monthlyTargetPence,
+    }));
+
+  const monthlyVariablePence = variableTargets.reduce(
+    (a, t) => a + t.monthlyTargetPence,
+    0
+  );
+  const monthlyFixedPence = targets
+    .filter((t) => t.type !== "variable")
+    .reduce((a, t) => a + t.monthlyTargetPence, 0);
+
+  const monthlyIncomePence = override ?? historical;
+  const monthsRemaining = monthsUntilGoal();
+  const goal = goalRows[0] ?? { name: "Savings goal", targetPence: 0 };
+
+  const inputs = {
+    startingSavedPence,
+    monthlyIncomePence,
+    monthlyFixedPence,
+    monthlyVariablePence,
+    monthsRemaining,
+    goalTargetPence: goal.targetPence,
+  };
+
+  return {
+    inputs,
+    result: computeOutlook(inputs),
+    variableTargets,
+    historicalIncomePence: historical,
+    incomeIsOverridden: override != null,
+    goalName: goal.name,
+    goalDate: OUTLOOK_GOAL_DATE,
+  };
 }

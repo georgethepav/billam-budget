@@ -8,6 +8,13 @@
       "when": 1779111310078,
       "tag": "0000_true_chimera",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779126099580,
+      "tag": "0001_add_app_settings",
+      "breakpoints": true
     }
   ]
 }

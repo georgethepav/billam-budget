@@ -3,11 +3,35 @@ import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { isAuthenticated } from "./session";
 
-export async function checkPassword(plaintext: string): Promise<boolean> {
+const BCRYPT_SHAPE = /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/;
+
+// A correct bcrypt hash is `$2b$12$...` and 60 chars. If it is missing or the
+// wrong shape it is almost always because the `$` were eaten by
+// dotenv-expand in .env.local (escape them as \$), or the var is unset.
+// Logging loudly here turns a silent "password always wrong" into an
+// obvious, actionable server log.
+export function validatePasswordHash(): { ok: boolean; reason?: string } {
   const hash = process.env.SITE_PASSWORD_HASH;
-  if (!hash) return false;
+  if (!hash) return { ok: false, reason: "SITE_PASSWORD_HASH is not set" };
+  if (!BCRYPT_SHAPE.test(hash)) {
+    return {
+      ok: false,
+      reason:
+        "SITE_PASSWORD_HASH is not a valid bcrypt hash (expected $2b$12$… 60 chars). " +
+        "In .env.local escape each $ as \\$; in Vercel paste the raw hash unescaped.",
+    };
+  }
+  return { ok: true };
+}
+
+export async function checkPassword(plaintext: string): Promise<boolean> {
+  const check = validatePasswordHash();
+  if (!check.ok) {
+    console.error(`[auth] Login cannot succeed: ${check.reason}`);
+    return false;
+  }
   try {
-    return await bcrypt.compare(plaintext, hash);
+    return await bcrypt.compare(plaintext, process.env.SITE_PASSWORD_HASH!);
   } catch {
     return false;
   }

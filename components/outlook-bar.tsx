@@ -3,11 +3,34 @@ import { formatPence } from "@/lib/money";
 import { formatDisplayDate } from "@/lib/dates";
 import type { OutlookResult } from "@/lib/outlook";
 
-// iCloud-storage-style horizontal bar. One bar split into what gets saved vs
-// what gets spent over the whole stretch to the goal date, plus a slim goal
-// progress bar showing whether the projected pot clears the single goal.
-// Pure/presentational so it renders on the server and inside the client
-// what-if alike.
+// Fixed colours for the structural segments; variable categories cycle a
+// palette in the order they appear so colours stay stable.
+const FIXED_COLOURS: Record<string, string> = {
+  saved: "bg-emerald-500",
+  fixed: "bg-sky-600",
+  subscriptions: "bg-violet-500",
+  buffer: "bg-zinc-400 dark:bg-zinc-600",
+  planned: "bg-rose-500",
+};
+const VARIABLE_PALETTE = [
+  "bg-amber-500",
+  "bg-orange-500",
+  "bg-teal-500",
+  "bg-fuchsia-500",
+  "bg-lime-600",
+  "bg-cyan-500",
+  "bg-pink-500",
+];
+
+function colourFor(key: string, variableIndex: number): string {
+  if (FIXED_COLOURS[key]) return FIXED_COLOURS[key];
+  return VARIABLE_PALETTE[variableIndex % VARIABLE_PALETTE.length];
+}
+
+// iCloud-storage-style stacked bar. The whole bar is what flows through to the
+// goal date: a green "saved" slice plus a coloured slice per spend group
+// (fixed, subs, each variable category, buffer, planned). A slim goal bar
+// underneath shows whether the projected pot clears the single goal.
 export function OutlookBar({
   result,
   goalName,
@@ -28,19 +51,31 @@ export function OutlookBar({
     goalShortfallPence,
     goalReached,
     monthlySurplusPence,
-    savedFraction,
+    segments,
   } = result;
 
-  const savedPct = Math.round(savedFraction * 100);
+  const savedForBar = Math.max(0, projectedSavedPence);
+  const grandTotal = savedForBar + Math.max(0, totalSpentPence);
+  const pct = (p: number) => (grandTotal > 0 ? (p / grandTotal) * 100 : 0);
+  const deficit = monthlySurplusPence < 0;
+
+  // Build the ordered slices (saved first), tagging variable colours in order.
+  let vIdx = 0;
+  const slices = [
+    { key: "saved", label: "Saved", pence: savedForBar },
+    ...segments,
+  ].map((s) => {
+    const colour = colourFor(
+      s.key,
+      s.key.startsWith("var:") ? vIdx++ : 0
+    );
+    return { ...s, colour };
+  });
+
   const goalPct =
     goalTargetPence > 0
-      ? Math.min(
-          100,
-          Math.max(0, (Math.max(0, projectedSavedPence) / goalTargetPence) * 100)
-        )
+      ? Math.min(100, Math.max(0, (savedForBar / goalTargetPence) * 100))
       : 0;
-
-  const deficit = monthlySurplusPence < 0;
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -69,28 +104,32 @@ export function OutlookBar({
         </p>
       </div>
 
-      {/* Saved vs spent over the whole period */}
+      {/* Stacked saved-vs-spend-by-group bar */}
       <div>
         <div className="flex h-5 w-full overflow-hidden rounded-full bg-secondary ring-1 ring-foreground/10">
-          <div
-            className="h-full bg-emerald-500 transition-all"
-            style={{ width: `${savedPct}%` }}
-          />
-          <div
-            className="h-full bg-zinc-400 transition-all dark:bg-zinc-600"
-            style={{ width: `${100 - savedPct}%` }}
-          />
+          {slices.map((s) => (
+            <div
+              key={s.key}
+              className={cn("h-full transition-all", s.colour)}
+              style={{ width: `${pct(s.pence)}%` }}
+              title={`${s.label}: ${formatPence(s.pence)}`}
+            />
+          ))}
         </div>
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
-          <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-            Saved {formatPence(Math.max(0, projectedSavedPence))}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-zinc-400 dark:bg-zinc-600" />
-            Spent {formatPence(totalSpentPence)} over the period
-          </span>
-        </div>
+        <ul className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-3">
+          {slices.map((s) => (
+            <li key={s.key} className="flex items-center gap-1.5">
+              <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", s.colour)} />
+              <span className="min-w-0 flex-1 truncate">{s.label}</span>
+              <span className="tabular-nums text-muted-foreground">
+                {formatPence(s.pence)}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          Spent over the period: {formatPence(totalSpentPence)}
+        </p>
       </div>
 
       {/* Progress towards the single goal */}

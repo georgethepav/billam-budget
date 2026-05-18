@@ -111,6 +111,20 @@ export const subscriptions = pgTable("subscriptions", {
     .notNull(),
 });
 
+// One-off / seasonal payments planned before the outlook goal date (summer
+// holiday, Christmas, car service...). Deducted from the projected pot and
+// shown as their own segment in the outlook bar.
+export const plannedPayments = pgTable("planned_payments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  amountPence: integer("amount_pence").notNull(),
+  // First of the month the payment is expected in.
+  dueDate: date("due_date").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
 // Small key/value store for app-level settings that aren't env vars and don't
 // warrant their own table (e.g. the projected monthly income override).
 export const appSettings = pgTable("app_settings", {
@@ -145,3 +159,4 @@ export type SavingsTransfer = typeof savingsTransfers.$inferSelect;
 export type Subscription = typeof subscriptions.$inferSelect;
 export type CsvImport = typeof csvImports.$inferSelect;
 export type AppSetting = typeof appSettings.$inferSelect;
+export type PlannedPayment = typeof plannedPayments.$inferSelect;

@@ -15,6 +15,13 @@
       "when": 1779126099580,
       "tag": "0001_add_app_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779127797128,
+      "tag": "0002_add_planned_payments",
+      "breakpoints": true
     }
   ]
 }

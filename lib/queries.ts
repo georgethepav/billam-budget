@@ -10,6 +10,7 @@ import {
   subscriptions,
   categoryRules,
   csvImports,
+  plannedPayments,
 } from "@/db/schema";
 import {
   weekRange,
@@ -611,8 +612,15 @@ export async function getAverageMonthlyIncomePence(): Promise<number> {
 // Everything the Outlook projection and its what-if need. Returns the base
 // inputs, the per-variable-category breakdown (the editable lever) and the
 // computed result for the initial server render.
+export async function getPlannedPayments() {
+  return db
+    .select()
+    .from(plannedPayments)
+    .orderBy(asc(plannedPayments.dueDate));
+}
+
 export async function getOutlookModel() {
-  const [startingSavedPence, targets, goalRows, historical, override] =
+  const [startingSavedPence, targets, goalRows, historical, override, planned] =
     await Promise.all([
       getTotalSaved(),
       getBudgetTargets(),
@@ -627,7 +635,13 @@ export async function getOutlookModel() {
         .limit(1),
       getAverageMonthlyIncomePence(),
       getIncomeOverridePence(),
+      getPlannedPayments(),
     ]);
+
+  const sumByType = (type: string) =>
+    targets
+      .filter((t) => t.type === type)
+      .reduce((a, t) => a + t.monthlyTargetPence, 0);
 
   const variableTargets = targets
     .filter((t) => t.type === "variable")
@@ -637,23 +651,38 @@ export async function getOutlookModel() {
       monthlyTargetPence: t.monthlyTargetPence,
     }));
 
-  const monthlyVariablePence = variableTargets.reduce(
-    (a, t) => a + t.monthlyTargetPence,
-    0
-  );
-  const monthlyFixedPence = targets
-    .filter((t) => t.type !== "variable")
-    .reduce((a, t) => a + t.monthlyTargetPence, 0);
+  const monthlyFixedPence = sumByType("fixed");
+  const monthlySubscriptionPence = sumByType("subscription");
+  const monthlyBufferPence = sumByType("buffer");
 
   const monthlyIncomePence = override ?? historical;
   const monthsRemaining = monthsUntilGoal();
   const goal = goalRows[0] ?? { name: "Savings goal", targetPence: 0 };
 
+  // Only planned payments still ahead of us and on/before the goal date count
+  // against the projection.
+  const todayIso = isoDate(new Date());
+  const plannedPaymentsList = planned.map((p) => ({
+    id: p.id,
+    name: p.name,
+    amountPence: p.amountPence,
+    dueDate: p.dueDate,
+  }));
+  const plannedTotalPence = plannedPaymentsList
+    .filter((p) => p.dueDate >= todayIso && p.dueDate <= OUTLOOK_GOAL_DATE)
+    .reduce((a, p) => a + p.amountPence, 0);
+
   const inputs = {
     startingSavedPence,
     monthlyIncomePence,
     monthlyFixedPence,
-    monthlyVariablePence,
+    monthlySubscriptionPence,
+    monthlyBufferPence,
+    variable: variableTargets.map((t) => ({
+      category: t.category,
+      monthlyPence: t.monthlyTargetPence,
+    })),
+    plannedTotalPence,
     monthsRemaining,
     goalTargetPence: goal.targetPence,
   };
@@ -662,9 +691,11 @@ export async function getOutlookModel() {
     inputs,
     result: computeOutlook(inputs),
     variableTargets,
+    plannedPayments: plannedPaymentsList,
     historicalIncomePence: historical,
     incomeIsOverridden: override != null,
     goalName: goal.name,
     goalDate: OUTLOOK_GOAL_DATE,
+    todayIso,
   };
 }

@@ -37,9 +37,11 @@ export default async function OutlookPage() {
           <OutlookWhatIf
             inputs={model.inputs}
             variableTargets={model.variableTargets}
+            plannedPayments={model.plannedPayments}
             historicalIncomePence={model.historicalIncomePence}
             goalName={model.goalName}
             goalDate={model.goalDate}
+            todayIso={model.todayIso}
           />
         </CardContent>
       </Card>

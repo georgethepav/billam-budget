@@ -43,3 +43,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# personal bank statements - never commit
+*.pdf
+Statement_*.pdf

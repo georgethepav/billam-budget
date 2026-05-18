@@ -19,8 +19,20 @@ import {
   previewImport,
   commitImport,
   type ImportPreview,
+  type ImportKind,
 } from "@/app/actions/import";
 import type { CsvFormat } from "@/lib/csv";
+
+// Browser File -> base64 without blowing the call stack on large PDFs.
+async function fileToBase64(file: File): Promise<string> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let bin = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(bin);
+}
 
 type AccountOpt = {
   id: string;
@@ -33,6 +45,7 @@ type FileState = {
   key: string;
   filename: string;
   content: string;
+  kind: ImportKind;
   accountId: string;
   status: "parsing" | "preview" | "importing" | "done" | "error";
   preview?: ImportPreview;
@@ -53,11 +66,23 @@ export function UploadZone({ accounts }: { accounts: AccountOpt[] }) {
     accounts.find((a) => a.name === "Halifax")?.id ?? accounts[0]?.id ?? "";
 
   const runPreview = useCallback(
-    async (key: string, accountId: string, filename: string, content: string) => {
+    async (
+      key: string,
+      accountId: string,
+      filename: string,
+      content: string,
+      kind: ImportKind
+    ) => {
       const acc = accounts.find((a) => a.id === accountId);
       const format = (acc?.csvFormat ?? "halifax") as CsvFormat;
       try {
-        const preview = await previewImport(accountId, filename, format, content);
+        const preview = await previewImport(
+          accountId,
+          filename,
+          format,
+          content,
+          kind
+        );
         setFiles((prev) =>
           prev.map((f) => {
             if (f.key !== key) return f;
@@ -95,27 +120,40 @@ export function UploadZone({ accounts }: { accounts: AccountOpt[] }) {
 
   const handleFiles = useCallback(
     async (fileList: FileList) => {
-      const accepted = Array.from(fileList).filter(
-        (f) => f.name.toLowerCase().endsWith(".csv") || f.type === "text/csv"
-      );
+      const accepted = Array.from(fileList).filter((f) => {
+        const n = f.name.toLowerCase();
+        return (
+          n.endsWith(".csv") ||
+          f.type === "text/csv" ||
+          n.endsWith(".pdf") ||
+          f.type === "application/pdf"
+        );
+      });
       if (accepted.length === 0) {
-        toast.error("Only .csv files are accepted.");
+        toast.error("Only .csv and .pdf files are accepted.");
         return;
       }
       for (const file of accepted) {
         const key = `${file.name}-${file.size}-${Date.now()}-${Math.random()}`;
-        const content = await file.text();
+        const isPdf =
+          file.name.toLowerCase().endsWith(".pdf") ||
+          file.type === "application/pdf";
+        const kind: ImportKind = isPdf ? "pdf" : "csv";
+        const content = isPdf
+          ? await fileToBase64(file)
+          : await file.text();
         setFiles((prev) => [
           ...prev,
           {
             key,
             filename: file.name,
             content,
+            kind,
             accountId: defaultAccount,
             status: "parsing",
           },
         ]);
-        void runPreview(key, defaultAccount, file.name, content);
+        void runPreview(key, defaultAccount, file.name, content, kind);
       }
     },
     [defaultAccount, runPreview]
@@ -137,7 +175,7 @@ export function UploadZone({ accounts }: { accounts: AccountOpt[] }) {
       )
     );
     const f = files.find((x) => x.key === key);
-    if (f) void runPreview(key, accountId, f.filename, f.content);
+    if (f) void runPreview(key, accountId, f.filename, f.content, f.kind);
   }
 
   async function doImport(key: string) {
@@ -153,7 +191,8 @@ export function UploadZone({ accounts }: { accounts: AccountOpt[] }) {
         f.accountId,
         f.filename,
         format,
-        f.content
+        f.content,
+        f.kind
       );
       setFiles((prev) =>
         prev.map((x) =>
@@ -206,15 +245,18 @@ export function UploadZone({ accounts }: { accounts: AccountOpt[] }) {
           )}
         />
         <p className="text-sm font-medium">
-          {dragging ? "Drop to upload" : "Drag CSV here or click to browse"}
+          {dragging
+            ? "Drop to upload"
+            : "Drag CSV or PDF here or click to browse"}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Multiple files supported. Lloyds, Halifax and Monzo formats.
+          Multiple files supported. CSV (Lloyds, Halifax, Monzo) or Halifax
+          PDF statements. Duplicates are skipped automatically.
         </p>
         <input
           ref={inputRef}
           type="file"
-          accept=".csv,text/csv"
+          accept=".csv,text/csv,.pdf,application/pdf"
           multiple
           className="hidden"
           onChange={(e) => {

@@ -77,6 +77,13 @@ export function daysLeftInMonth(ref: Date = new Date()): number {
   return getDaysInMonth(ref) - ref.getDate();
 }
 
+// Whole days from `ref` through the end of its (Mon-Sun) week, inclusive of
+// today. e.g. Sunday -> 1, Saturday -> 2, Monday -> 7.
+export function daysLeftInWeek(ref: Date = new Date()): number {
+  const end = endOfWeek(ref, WEEK_OPTS);
+  return differenceInCalendarDays(end, ref) + 1;
+}
+
 export function daysSince(iso: string | null | undefined): number | null {
   if (!iso) return null;
   return differenceInCalendarDays(new Date(), new Date(iso));

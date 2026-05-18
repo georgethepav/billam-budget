@@ -21,7 +21,7 @@ import {
   getUncategorised,
 } from "@/lib/queries-cached";
 import { formatPence, formatPenceCompact } from "@/lib/money";
-import { formatDisplayDate, formatDayDate } from "@/lib/dates";
+import { formatDisplayDate, formatDayDate, daysLeftInWeek } from "@/lib/dates";
 import { balanceStatus, STATUS_TEXT } from "@/lib/status";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,6 +31,7 @@ import { DashboardAlerts } from "@/components/alerts";
 import { UncategorisedPanel } from "@/components/uncategorised-panel";
 import { CategoryDonut } from "@/components/dashboard-charts";
 import { HealthRing, HubCard } from "@/components/dashboard-hub";
+import { ThisWeek } from "@/components/this-week";
 
 export const metadata = { title: "Dashboard - Billam Family Budget" };
 
@@ -40,6 +41,7 @@ export default async function DashboardPage() {
     goals,
     health,
     week,
+    thisWeek,
     monthly,
     headlines,
     recent,
@@ -51,6 +53,7 @@ export default async function DashboardPage() {
     getSavingsGoalsWithProgress(),
     getWeeklyHealth(),
     getWeeklyTracker("last"),
+    getWeeklyTracker("this"),
     getMonthlyCategorySpend(),
     getHeadlines(),
     getRecentTransactions(10),
@@ -217,6 +220,17 @@ export default async function DashboardPage() {
             )}
           </div>
         </div>
+      </HubCard>
+
+      <HubCard
+        title="This week"
+        description={`${formatDayDate(thisWeek.start)} – ${formatDayDate(
+          thisWeek.end
+        )} ${thisWeek.end.slice(0, 4)} · what's left to spend`}
+        icon={<CalendarRange className="h-5 w-5 text-muted-foreground" />}
+        defaultOpen
+      >
+        <ThisWeek items={thisWeek.items} daysLeft={daysLeftInWeek()} />
       </HubCard>
 
       <HubCard

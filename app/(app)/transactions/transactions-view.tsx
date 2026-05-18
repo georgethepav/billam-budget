@@ -251,6 +251,7 @@ export function TransactionsView({
 
       <Button
         render={<Link href="/upload" />}
+        nativeButton={false}
         className="fixed bottom-6 right-6 z-20 h-12 rounded-full shadow-lg"
       >
         <Plus className="mr-1 h-4 w-4" /> Upload CSV

@@ -116,6 +116,7 @@ export function SettingsView() {
             </div>
             <Button
               render={<a href="/api/export" />}
+              nativeButton={false}
               variant="outline"
               size="sm"
             >

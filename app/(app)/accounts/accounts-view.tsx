@@ -89,6 +89,7 @@ export function AccountsView({ accounts }: { accounts: Account[] }) {
               <div className="pt-2">
                 <Button
                   render={<Link href="/upload" />}
+                  nativeButton={false}
                   size="sm"
                   variant="outline"
                 >

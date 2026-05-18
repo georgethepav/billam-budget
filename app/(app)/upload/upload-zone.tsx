@@ -283,6 +283,7 @@ export function UploadZone({ accounts }: { accounts: AccountOpt[] }) {
                 </p>
                 <Button
                   render={<Link href="/transactions" />}
+                  nativeButton={false}
                   size="sm"
                   variant="outline"
                 >

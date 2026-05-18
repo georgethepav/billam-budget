@@ -18,6 +18,10 @@ export type OutlookInputs = {
   // One-off planned payments falling within the projection window (already
   // filtered + summed by the caller).
   plannedTotalPence: number;
+  // Ring-fenced Holiday 2026 fund and what's already been spent against it.
+  // The projection reserves only the unspent remainder.
+  holidayFundPence: number;
+  holidaySpentPence: number;
   // Full months left until the goal date.
   monthsRemaining: number;
   // The single savings goal we're aiming at by the goal date.
@@ -40,6 +44,10 @@ export type OutlookResult = {
   savedFraction: number;
   // Spent broken down for the stacked bar, over the whole period. Ordered.
   segments: OutlookSegment[];
+  // Holiday fund breakdown for display.
+  holidayFundPence: number;
+  holidaySpentPence: number;
+  holidayReservePence: number;
 };
 
 export function computeOutlook(i: OutlookInputs): OutlookResult {
@@ -52,11 +60,21 @@ export function computeOutlook(i: OutlookInputs): OutlookResult {
     variableMonthly;
   const monthlySurplusPence = i.monthlyIncomePence - monthlyOutflowPence;
 
+  // Past holiday spend has already left the account, so only the unspent
+  // remainder of the fund is reserved against the forward projection.
+  const holidayReservePence = Math.max(
+    0,
+    Math.round(i.holidayFundPence - i.holidaySpentPence)
+  );
+
   const totalSpentPence = Math.round(
-    monthlyOutflowPence * m + i.plannedTotalPence
+    monthlyOutflowPence * m + i.plannedTotalPence + holidayReservePence
   );
   const projectedSavedPence = Math.round(
-    i.startingSavedPence + monthlySurplusPence * m - i.plannedTotalPence
+    i.startingSavedPence +
+      monthlySurplusPence * m -
+      i.plannedTotalPence -
+      holidayReservePence
   );
 
   const goalMetPence = Math.max(
@@ -81,6 +99,7 @@ export function computeOutlook(i: OutlookInputs): OutlookResult {
       pence: Math.round(v.monthlyPence * m),
     })),
     { key: "buffer", label: "Buffer", pence: Math.round(i.monthlyBufferPence * m) },
+    { key: "holiday", label: "Holiday 2026", pence: holidayReservePence },
     { key: "planned", label: "Planned payments", pence: Math.round(i.plannedTotalPence) },
   ].filter((s) => s.pence > 0);
 
@@ -95,5 +114,8 @@ export function computeOutlook(i: OutlookInputs): OutlookResult {
     goalReached: projectedSavedPence >= i.goalTargetPence,
     savedFraction: denom > 0 ? savedForBar / denom : 0,
     segments,
+    holidayFundPence: i.holidayFundPence,
+    holidaySpentPence: i.holidaySpentPence,
+    holidayReservePence,
   };
 }

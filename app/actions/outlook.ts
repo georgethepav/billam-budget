@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { plannedPayments } from "@/db/schema";
+import { setHolidayFundPence } from "@/lib/settings";
 
 function revalidate() {
   revalidatePath("/outlook");
@@ -48,5 +49,13 @@ export async function updatePlannedPayment(
 
 export async function deletePlannedPayment(id: string) {
   await db.delete(plannedPayments).where(eq(plannedPayments.id, id));
+  revalidate();
+}
+
+export async function setHolidayFund(pence: number) {
+  if (!Number.isFinite(pence) || pence < 0) {
+    throw new Error("Fund must be zero or a positive number");
+  }
+  await setHolidayFundPence(pence);
   revalidate();
 }

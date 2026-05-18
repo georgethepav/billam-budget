@@ -10,6 +10,7 @@ const FIXED_COLOURS: Record<string, string> = {
   fixed: "bg-sky-600",
   subscriptions: "bg-violet-500",
   buffer: "bg-zinc-400 dark:bg-zinc-600",
+  holiday: "bg-indigo-500",
   planned: "bg-rose-500",
 };
 const VARIABLE_PALETTE = [
@@ -130,6 +131,14 @@ export function OutlookBar({
         <p className="mt-1.5 text-xs text-muted-foreground">
           Spent over the period: {formatPence(totalSpentPence)}
         </p>
+        {result.holidayFundPence > 0 && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            <span className="inline-block h-2 w-2 rounded-full bg-indigo-500 align-middle" />{" "}
+            Holiday 2026: {formatPence(result.holidayFundPence)} fund ·{" "}
+            {formatPence(result.holidaySpentPence)} spent ·{" "}
+            {formatPence(result.holidayReservePence)} reserved to the goal date
+          </p>
+        )}
       </div>
 
       {/* Progress towards the single goal */}

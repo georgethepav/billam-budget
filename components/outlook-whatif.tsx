@@ -22,6 +22,7 @@ import {
   addPlannedPayment,
   updatePlannedPayment,
   deletePlannedPayment,
+  setHolidayFund,
 } from "@/app/actions/outlook";
 
 type VarTarget = { id: string; category: string; monthlyTargetPence: number };
@@ -84,6 +85,9 @@ export function OutlookWhatIf({
   const [planned, setPlanned] = useState(
     plannedPayments.map((p) => ({ ...p, value: toPounds(p.amountPence) }))
   );
+  const [holidayFund, setHolidayFundValue] = useState(
+    toPounds(inputs.holidayFundPence)
+  );
   const months = useMemo(
     () => monthOptions(todayIso, goalDate),
     [todayIso, goalDate]
@@ -109,8 +113,9 @@ export function OutlookWhatIf({
           monthlyPence: toPence(v.value),
         })),
         plannedTotalPence,
+        holidayFundPence: toPence(holidayFund),
       }),
-    [inputs, income, vars, plannedTotalPence]
+    [inputs, income, vars, plannedTotalPence, holidayFund]
   );
 
   function saveVar(id: string, value: string) {
@@ -146,6 +151,17 @@ export function OutlookWhatIf({
         toast.success("Income reset to the historical average");
       } catch {
         toast.error("Could not reset income");
+      }
+    });
+  }
+
+  function saveHolidayFund() {
+    start(async () => {
+      try {
+        await setHolidayFund(toPence(holidayFund));
+        toast.success("Holiday 2026 fund updated");
+      } catch {
+        toast.error("Could not save the holiday fund");
       }
     });
   }
@@ -264,6 +280,38 @@ export function OutlookWhatIf({
               />
             </div>
           ))}
+        </div>
+      </div>
+
+      <div className="space-y-2 border-t pt-4">
+        <p className="text-sm font-medium">Holiday 2026 fund</p>
+        <p className="text-xs text-muted-foreground">
+          Ring-fenced for the rest of 2026&apos;s holidays (not the Australia
+          trip — that&apos;s the Melbourne savings goal). Categorise
+          transactions as &quot;Holiday 2026&quot; to track spend against it.
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Fund (£)</Label>
+            <Input
+              value={holidayFund}
+              onChange={(e) => setHolidayFundValue(e.target.value)}
+              onBlur={saveHolidayFund}
+              disabled={pending}
+              inputMode="decimal"
+              className="h-9 w-32 tabular-nums"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">
+              {formatPence(result.holidaySpentPence)}
+            </span>{" "}
+            spent ·{" "}
+            <span className="font-medium text-foreground">
+              {formatPence(result.holidayReservePence)}
+            </span>{" "}
+            remaining (reserved against the projection)
+          </p>
         </div>
       </div>
 

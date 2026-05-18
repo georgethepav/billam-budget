@@ -44,3 +44,17 @@ export async function setIncomeOverridePence(
   // Empty string clears the override (back to the historical average).
   await setSetting(INCOME_KEY, pence == null ? "" : String(Math.round(pence)));
 }
+
+const HOLIDAY_FUND_KEY = "holiday_2026_fund_pence";
+export const DEFAULT_HOLIDAY_FUND_PENCE = 200000; // £2,000
+
+export async function getHolidayFundPence(): Promise<number> {
+  const raw = await getSetting(HOLIDAY_FUND_KEY);
+  if (raw == null || raw.trim() === "") return DEFAULT_HOLIDAY_FUND_PENCE;
+  const n = Number(raw);
+  return Number.isFinite(n) ? Math.max(0, Math.round(n)) : DEFAULT_HOLIDAY_FUND_PENCE;
+}
+
+export async function setHolidayFundPence(pence: number): Promise<void> {
+  await setSetting(HOLIDAY_FUND_KEY, String(Math.max(0, Math.round(pence))));
+}

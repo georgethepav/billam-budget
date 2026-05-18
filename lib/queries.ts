@@ -21,7 +21,7 @@ import {
   monthsUntilGoal,
   OUTLOOK_GOAL_DATE,
 } from "./dates";
-import { getIncomeOverridePence } from "./settings";
+import { getIncomeOverridePence, getHolidayFundPence } from "./settings";
 import { computeOutlook } from "./outlook";
 
 export const VARIABLE_CATEGORIES = [
@@ -33,6 +33,11 @@ export const VARIABLE_CATEGORIES = [
   "Transport",
   "Personal",
 ] as const;
+
+// Ring-fenced holiday spend for the rest of 2026 (excludes the Australia
+// trip, which is the separate "Melbourne accommodation" savings goal).
+// Transactions can be categorised to this so the fund can be tracked.
+export const HOLIDAY_2026 = "Holiday 2026";
 
 export async function getAccounts() {
   return db.select().from(bankAccounts).orderBy(asc(bankAccounts.accountName));
@@ -371,7 +376,12 @@ export async function getCategoryOptions(): Promise<string[]> {
   const rows = await db
     .selectDistinct({ category: categoryRules.category })
     .from(categoryRules);
-  const set = new Set<string>(["Uncategorised", "Income", "Transfer"]);
+  const set = new Set<string>([
+    "Uncategorised",
+    "Income",
+    "Transfer",
+    HOLIDAY_2026,
+  ]);
   for (const r of rows) set.add(r.category);
   for (const c of VARIABLE_CATEGORIES) set.add(c);
   return [...set].sort();
@@ -612,6 +622,24 @@ export async function getAverageMonthlyIncomePence(): Promise<number> {
 // Everything the Outlook projection and its what-if need. Returns the base
 // inputs, the per-variable-category breakdown (the editable lever) and the
 // computed result for the initial server render.
+// Actual spend already categorised to the Holiday 2026 fund this year
+// (net of any refunds). Used to show spent vs remaining of the float.
+export async function getHolidaySpentPence(): Promise<number> {
+  const rows = await db
+    .select({
+      total: sql<number>`coalesce(sum(case when ${transactions.amountPence} < 0 then -${transactions.amountPence} else 0 end), 0)`,
+    })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.category, HOLIDAY_2026),
+        eq(transactions.isExcluded, false),
+        gte(transactions.transactionDate, "2026-01-01")
+      )
+    );
+  return Number(rows[0]?.total ?? 0);
+}
+
 export async function getPlannedPayments() {
   return db
     .select()
@@ -620,23 +648,33 @@ export async function getPlannedPayments() {
 }
 
 export async function getOutlookModel() {
-  const [startingSavedPence, targets, goalRows, historical, override, planned] =
-    await Promise.all([
-      getTotalSaved(),
-      getBudgetTargets(),
-      db
-        .select({
-          name: savingsGoals.name,
-          targetPence: savingsGoals.targetPence,
-        })
-        .from(savingsGoals)
-        .where(eq(savingsGoals.isActive, true))
-        .orderBy(asc(savingsGoals.priority))
-        .limit(1),
-      getAverageMonthlyIncomePence(),
-      getIncomeOverridePence(),
-      getPlannedPayments(),
-    ]);
+  const [
+    startingSavedPence,
+    targets,
+    goalRows,
+    historical,
+    override,
+    planned,
+    holidayFundPence,
+    holidaySpentPence,
+  ] = await Promise.all([
+    getTotalSaved(),
+    getBudgetTargets(),
+    db
+      .select({
+        name: savingsGoals.name,
+        targetPence: savingsGoals.targetPence,
+      })
+      .from(savingsGoals)
+      .where(eq(savingsGoals.isActive, true))
+      .orderBy(asc(savingsGoals.priority))
+      .limit(1),
+    getAverageMonthlyIncomePence(),
+    getIncomeOverridePence(),
+    getPlannedPayments(),
+    getHolidayFundPence(),
+    getHolidaySpentPence(),
+  ]);
 
   const sumByType = (type: string) =>
     targets
@@ -683,6 +721,8 @@ export async function getOutlookModel() {
       monthlyPence: t.monthlyTargetPence,
     })),
     plannedTotalPence,
+    holidayFundPence,
+    holidaySpentPence,
     monthsRemaining,
     goalTargetPence: goal.targetPence,
   };

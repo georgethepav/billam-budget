@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx tsx *)"
+      "Bash(npx tsx *)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'Dashboard: hub layout with weekly health ring and collapsible cards *)",
+      "Bash(git push *)"
     ]
   }
 }

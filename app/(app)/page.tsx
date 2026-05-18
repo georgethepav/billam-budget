@@ -1,9 +1,20 @@
 import Link from "next/link";
 import {
+  Inbox,
+  Newspaper,
+  CalendarDays,
+  CalendarRange,
+  PiggyBank,
+  Receipt,
+  TrendingDown,
+} from "lucide-react";
+import {
   getHouseholdPosition,
   getSavingsGoalsWithProgress,
+  getWeeklyHealth,
   getWeeklyTracker,
   getMonthlyCategorySpend,
+  getHeadlines,
   getRecentTransactions,
   getDaysSinceLastUpload,
   getCategoryOptions,
@@ -13,18 +24,13 @@ import { formatPence, formatPenceCompact } from "@/lib/money";
 import { formatDisplayDate } from "@/lib/dates";
 import { balanceStatus, STATUS_TEXT } from "@/lib/status";
 import { cn } from "@/lib/utils";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { SpendBar } from "@/components/spend-bar";
 import { CategorySelect } from "@/components/category-select";
 import { DashboardAlerts } from "@/components/alerts";
 import { UncategorisedPanel } from "@/components/uncategorised-panel";
 import { CategoryDonut } from "@/components/dashboard-charts";
+import { HealthRing, HubCard } from "@/components/dashboard-hub";
 
 export const metadata = { title: "Dashboard - Billam Family Budget" };
 
@@ -32,8 +38,10 @@ export default async function DashboardPage() {
   const [
     position,
     goals,
-    weekly,
+    health,
+    week,
     monthly,
+    headlines,
     recent,
     daysSinceUpload,
     categoryOptions,
@@ -41,8 +49,10 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     getHouseholdPosition(),
     getSavingsGoalsWithProgress(),
-    getWeeklyTracker("last"),
+    getWeeklyHealth(),
+    getWeeklyTracker("this"),
     getMonthlyCategorySpend(),
+    getHeadlines(),
     getRecentTransactions(10),
     getDaysSinceLastUpload(),
     getCategoryOptions(),
@@ -51,127 +61,175 @@ export default async function DashboardPage() {
 
   const balStatus = balanceStatus(position.lloydsBalancePence);
   const heroGoals = goals.slice(0, 3);
+  const pending = uncategorised.total;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5">
+    <div className="mx-auto max-w-3xl space-y-4">
       <header>
         <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
           Dashboard
         </h1>
         <p className="text-sm text-muted-foreground">
-          Sort uncategorised first, then review the numbers.
+          How this week is going, and what needs a look.
         </p>
       </header>
 
-      <UncategorisedPanel
-        rows={uncategorised.rows.map((r) => ({
-          id: r.id,
-          transactionDate: r.transactionDate,
-          description: r.description,
-          amountPence: r.amountPence,
-          accountName: r.accountName,
-        }))}
-        total={uncategorised.total}
-        days={uncategorised.days}
-        options={categoryOptions}
-      />
+      {/* Health ring + the figures that matter at a glance */}
+      <Card>
+        <CardContent className="space-y-4">
+          <HealthRing
+            spentPence={health.spentPence}
+            targetPence={health.targetPence}
+            caption={`${formatDisplayDate(health.start)} – ${formatDisplayDate(
+              health.end
+            )}`}
+          />
+          <div className="grid grid-cols-3 gap-2 border-t pt-3 text-center">
+            <div>
+              <p className="text-xs text-muted-foreground">Halifax</p>
+              <p
+                className={cn(
+                  "text-base font-semibold tabular-nums sm:text-lg",
+                  STATUS_TEXT[balStatus]
+                )}
+              >
+                {formatPence(position.lloydsBalancePence)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Savings</p>
+              <p className="text-base font-semibold tabular-nums sm:text-lg">
+                {formatPence(position.savingsBalancePence)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Net</p>
+              <p className="text-base font-semibold tabular-nums sm:text-lg">
+                {formatPence(position.netPositionPence)}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
+      {/* Notifications / tasks that need attention */}
       <DashboardAlerts
         daysSinceUpload={daysSinceUpload}
-        weekly={weekly.items}
+        weekly={health.items}
         monthly={monthly.items}
         lloydsBalancePence={position.lloydsBalancePence}
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Halifax</CardDescription>
-            <CardTitle
-              className={cn(
-                "text-2xl tabular-nums sm:text-3xl",
-                STATUS_TEXT[balStatus]
-              )}
-            >
-              {formatPence(position.lloydsBalancePence)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            Net of imported transactions
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Savings total</CardDescription>
-            <CardTitle className="text-2xl tabular-nums sm:text-3xl">
-              {formatPence(position.savingsBalancePence)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            Savings accounts and recorded transfers
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Net position</CardDescription>
-            <CardTitle className="text-2xl tabular-nums sm:text-3xl">
-              {formatPence(position.netPositionPence)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            Current plus savings
-          </CardContent>
-        </Card>
-      </div>
+      <HubCard
+        title="Sort uncategorised"
+        description={
+          pending > 0
+            ? "Nothing is tracked until it has a category."
+            : `All clear for the last ${uncategorised.days} days.`
+        }
+        icon={
+          <Inbox className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+        }
+        badge={pending > 0 ? pending : undefined}
+        badgeVariant="destructive"
+        accent={pending > 0}
+        defaultOpen={pending > 0}
+      >
+        <UncategorisedPanel
+          bare
+          rows={uncategorised.rows.map((r) => ({
+            id: r.id,
+            transactionDate: r.transactionDate,
+            description: r.description,
+            amountPence: r.amountPence,
+            accountName: r.accountName,
+          }))}
+          total={uncategorised.total}
+          days={uncategorised.days}
+          options={categoryOptions}
+        />
+      </HubCard>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        {heroGoals.map((g) => (
-          <Card key={g.id} className={g.complete ? "border-emerald-500" : ""}>
-            <CardHeader className="pb-2">
-              <CardDescription>{g.name}</CardDescription>
-              <CardTitle className="text-lg tabular-nums sm:text-xl">
-                {g.complete ? (
-                  <span className="text-emerald-600 dark:text-emerald-400">
-                    {g.name === "Overdraft clear"
-                      ? "Overdraft cleared"
-                      : "Goal reached"}
-                  </span>
-                ) : (
-                  <>
-                    {formatPenceCompact(g.allocatedPence)} of{" "}
-                    {formatPenceCompact(g.targetPence)}
-                  </>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                <div
-                  className="h-full rounded-full bg-emerald-500 transition-all"
-                  style={{ width: `${g.percent}%` }}
-                />
-              </div>
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{Math.round(g.percent)}%</span>
-                {g.targetDate && (
-                  <span>Target {formatDisplayDate(g.targetDate)}</span>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <HubCard
+        title="Headlines"
+        description="Biggest spends and overspends this week."
+        icon={
+          <Newspaper className="h-5 w-5 text-muted-foreground" />
+        }
+      >
+        <div className="space-y-5">
+          <div>
+            <p className="mb-2 text-sm font-medium">Over budget this week</p>
+            {headlines.overspent.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Nothing over its weekly target. Nice.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {headlines.overspent.map((o) => (
+                  <li
+                    key={o.category}
+                    className="flex items-center justify-between gap-3 text-sm"
+                  >
+                    <span className="flex items-center gap-2">
+                      <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
+                      {o.category}
+                    </span>
+                    <span className="tabular-nums text-red-600 dark:text-red-400">
+                      {formatPence(o.spentPence)} of{" "}
+                      {formatPence(o.targetPence)}
+                      <span className="ml-1 text-xs">
+                        (+{formatPence(o.overPence)})
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div>
+            <p className="mb-2 text-sm font-medium">Biggest spends this week</p>
+            {headlines.topSpends.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No spending recorded this week yet.
+              </p>
+            ) : (
+              <ul className="divide-y">
+                {headlines.topSpends.map((t, i) => (
+                  <li
+                    key={i}
+                    className="flex items-center justify-between gap-3 py-2 text-sm"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">
+                        {t.description}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDisplayDate(t.transactionDate)} - {t.category}
+                      </span>
+                    </span>
+                    <span className="shrink-0 tabular-nums">
+                      {formatPence(t.amountPence)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </HubCard>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Last week</CardTitle>
-          <CardDescription>
-            {formatDisplayDate(weekly.start)} to{" "}
-            {formatDisplayDate(weekly.end)} - the most recent complete week
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {weekly.items.map((w) => (
+      <HubCard
+        title="The week"
+        description={`${formatDisplayDate(week.start)} – ${formatDisplayDate(
+          week.end
+        )}`}
+        icon={
+          <CalendarRange className="h-5 w-5 text-muted-foreground" />
+        }
+      >
+        <div className="space-y-4">
+          {week.items.map((w) => (
             <SpendBar
               key={w.category}
               label={w.category}
@@ -179,35 +237,25 @@ export default async function DashboardPage() {
               targetPence={w.weeklyTargetPence}
             />
           ))}
-        </CardContent>
-      </Card>
+        </div>
+      </HubCard>
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">This month by category</CardTitle>
-            <CardDescription>Where the money has gone.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <CategoryDonut
-              items={monthly.items.map((m) => ({
-                category: m.category,
-                spentPence: m.spentPence,
-              }))}
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">
-              This month vs target
-            </CardTitle>
-            <CardDescription>
-              Month to date and projected end of month.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      <HubCard
+        title="The month"
+        description="Where the money has gone, and the projection."
+        icon={
+          <CalendarDays className="h-5 w-5 text-muted-foreground" />
+        }
+      >
+        <div className="space-y-6">
+          <CategoryDonut
+            items={monthly.items.map((m) => ({
+              category: m.category,
+              spentPence: m.spentPence,
+            }))}
+          />
+          <div className="space-y-4 border-t pt-4">
+            <p className="text-sm font-medium">This month vs target</p>
             {monthly.items.map((m) => (
               <SpendBar
                 key={m.category}
@@ -217,29 +265,69 @@ export default async function DashboardPage() {
                 projectedPence={m.projectedPence}
               />
             ))}
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="text-base">Recent transactions</CardTitle>
-            <CardDescription>Last 10 imported</CardDescription>
           </div>
-          <Link
-            href="/transactions"
-            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-          >
-            View all
-          </Link>
-        </CardHeader>
-        <CardContent>
-          {recent.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              No transactions yet. Upload a CSV to get started.
+        </div>
+      </HubCard>
+
+      <HubCard
+        title="Savings goals"
+        description="Progress towards each goal in priority order."
+        icon={<PiggyBank className="h-5 w-5 text-muted-foreground" />}
+      >
+        <div className="space-y-4">
+          {heroGoals.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No active goals.
             </p>
           ) : (
+            heroGoals.map((g) => (
+              <div key={g.id} className="space-y-1.5">
+                <div className="flex items-baseline justify-between text-sm">
+                  <span className="font-medium">{g.name}</span>
+                  <span className="tabular-nums text-muted-foreground">
+                    {g.complete ? (
+                      <span className="text-emerald-600 dark:text-emerald-400">
+                        {g.name === "Overdraft clear"
+                          ? "Overdraft cleared"
+                          : "Goal reached"}
+                      </span>
+                    ) : (
+                      <>
+                        {formatPenceCompact(g.allocatedPence)} of{" "}
+                        {formatPenceCompact(g.targetPence)}
+                      </>
+                    )}
+                  </span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all"
+                    style={{ width: `${g.percent}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>{Math.round(g.percent)}%</span>
+                  {g.targetDate && (
+                    <span>Target {formatDisplayDate(g.targetDate)}</span>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </HubCard>
+
+      <HubCard
+        title="Recent transactions"
+        description="Last 10 imported - recategorise here if needed."
+        icon={<Receipt className="h-5 w-5 text-muted-foreground" />}
+      >
+        {recent.length === 0 ? (
+          <p className="py-2 text-center text-sm text-muted-foreground">
+            No transactions yet. Upload a CSV to get started.
+          </p>
+        ) : (
+          <>
             <ul className="divide-y">
               {recent.map((t) => (
                 <li
@@ -273,9 +361,15 @@ export default async function DashboardPage() {
                 </li>
               ))}
             </ul>
-          )}
-        </CardContent>
-      </Card>
+            <Link
+              href="/transactions"
+              className="mt-3 block text-center text-sm text-muted-foreground underline-offset-4 hover:underline"
+            >
+              View all transactions
+            </Link>
+          </>
+        )}
+      </HubCard>
     </div>
   );
 }

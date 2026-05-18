@@ -182,6 +182,35 @@ export async function getWeeklyTracker(period: "this" | "last" = "last") {
   return { start, end, items: result };
 }
 
+// This-week (current, in-progress) variable spend vs weekly target. Drives the
+// dashboard health ring: a single good/warn/over/danger read for the week.
+export async function getWeeklyHealth() {
+  const w = await getWeeklyTracker("this");
+  const spentPence = w.items.reduce((a, i) => a + i.spentPence, 0);
+  const targetPence = w.items.reduce((a, i) => a + i.weeklyTargetPence, 0);
+  return { start: w.start, end: w.end, spentPence, targetPence, items: w.items };
+}
+
+// Headlines: the biggest individual spends this week and any weekly-tracked
+// category already over its weekly target.
+export async function getHeadlines() {
+  const [topSpends, week] = await Promise.all([
+    getTopSpendsThisWeek(5),
+    getWeeklyTracker("this"),
+  ]);
+  const overspent = week.items
+    .filter(
+      (i) => i.weeklyTargetPence > 0 && i.spentPence > i.weeklyTargetPence
+    )
+    .map((i) => ({
+      category: i.category,
+      spentPence: i.spentPence,
+      targetPence: i.weeklyTargetPence,
+      overPence: i.spentPence - i.weeklyTargetPence,
+    }));
+  return { start: week.start, end: week.end, topSpends, overspent };
+}
+
 export async function getMonthlyCategorySpend() {
   const { start, end } = monthRange();
   const targets = await getBudgetTargets();

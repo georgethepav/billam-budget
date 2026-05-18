@@ -68,15 +68,15 @@ export function DashboardAlerts({
     if (ratio >= 1) {
       banners.push(
         <Banner key={`wk-${w.category}`} level="danger">
-          {w.category} last week was {formatPence(w.spentPence)} of{" "}
-          {formatPence(w.weeklyTargetPence)}. Rein in{" "}
-          {w.category.toLowerCase()} this week to recover.
+          {w.category} this week is {formatPence(w.spentPence)} of{" "}
+          {formatPence(w.weeklyTargetPence)}. Ease off{" "}
+          {w.category.toLowerCase()} for the rest of the week.
         </Banner>
       );
     } else if (ratio >= 0.8) {
       banners.push(
         <Banner key={`wk-${w.category}`} level="warn">
-          {w.category} last week was {formatPence(w.spentPence)} of{" "}
+          {w.category} this week is {formatPence(w.spentPence)} of{" "}
           {formatPence(w.weeklyTargetPence)}.
         </Banner>
       );

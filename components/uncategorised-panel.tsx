@@ -31,11 +31,15 @@ export function UncategorisedPanel({
   total,
   days,
   options,
+  bare = false,
 }: {
   rows: Row[];
   total: number;
   days: number;
   options: string[];
+  // When nested inside a HubCard the outer card chrome/header is supplied by
+  // the parent, so render content only.
+  bare?: boolean;
 }) {
   const router = useRouter();
   const [items, setItems] = useState(rows);
@@ -45,14 +49,18 @@ export function UncategorisedPanel({
   const remaining = total - done;
 
   if (total === 0) {
+    const allClear = (
+      <div className="flex items-center gap-3">
+        <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+        <p className="text-sm font-medium">
+          All transactions in the last {days} days are categorised.
+        </p>
+      </div>
+    );
+    if (bare) return allClear;
     return (
       <Card className="border-emerald-500/50 bg-emerald-50/50 dark:bg-emerald-950/20">
-        <CardContent className="flex items-center gap-3 py-4">
-          <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-          <p className="text-sm font-medium">
-            All transactions in the last {days} days are categorised.
-          </p>
-        </CardContent>
+        <CardContent className="py-4">{allClear}</CardContent>
       </Card>
     );
   }
@@ -70,18 +78,8 @@ export function UncategorisedPanel({
     });
   }
 
-  return (
-    <Card className="border-amber-400 dark:border-amber-700">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Inbox className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-          {remaining} uncategorised in the last {days} days
-        </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Sort these first - nothing is tracked until it has a category.
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-2">
+  const body = (
+    <div className="space-y-2">
         {items.length === 0 ? (
           <p className="py-4 text-center text-sm text-muted-foreground">
             Nothing left in this batch. Refreshing...
@@ -136,7 +134,23 @@ export function UncategorisedPanel({
             View all {remaining} in Transactions
           </Button>
         )}
-      </CardContent>
+    </div>
+  );
+
+  if (bare) return body;
+
+  return (
+    <Card className="border-amber-400 dark:border-amber-700">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Inbox className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+          {remaining} uncategorised in the last {days} days
+        </CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Sort these first - nothing is tracked until it has a category.
+        </p>
+      </CardHeader>
+      <CardContent>{body}</CardContent>
     </Card>
   );
 }

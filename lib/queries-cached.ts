@@ -30,6 +30,16 @@ export const getHouseholdPosition = cached(
   q.getHouseholdPosition,
   ["getHouseholdPosition"]
 );
+export const getBalanceProgression = cached(
+  q.getBalanceProgression,
+  ["getBalanceProgression"]
+);
+export const getAverageMonthlyOverdraftInterestPence = cached(
+  q.getAverageMonthlyOverdraftInterestPence,
+  ["getAverageMonthlyOverdraftInterestPence"]
+);
+export { analyseBalance } from "./queries";
+export type { BalanceAnalysis } from "./queries";
 export const getTotalSaved = cached(q.getTotalSaved, ["getTotalSaved"]);
 export const getSavingsGoalsWithProgress = cached(
   q.getSavingsGoalsWithProgress,

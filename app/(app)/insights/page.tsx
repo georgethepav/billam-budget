@@ -72,12 +72,20 @@ export default async function InsightsPage() {
             Trends, top spends and subscription audit.
           </p>
         </div>
-        <Link
-          href="/insights/categorisation"
-          className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-        >
-          Categorisation audit →
-        </Link>
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          <Link
+            href="/insights/overdraft"
+            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+          >
+            Overdraft progression →
+          </Link>
+          <Link
+            href="/insights/categorisation"
+            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+          >
+            Categorisation audit →
+          </Link>
+        </div>
       </header>
 
       <Card>

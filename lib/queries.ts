@@ -89,6 +89,141 @@ async function accountNets() {
   return map;
 }
 
+// Daily closing balance for the main current account. Each point is the
+// running sum of all amount_pence up to and including that day; the dashboard
+// already treats this as "the Lloyds Joint balance" so we stay consistent.
+export async function getBalanceProgression(): Promise<{
+  accountName: string | null;
+  points: { date: string; balancePence: number }[];
+}> {
+  const accounts = await getAccounts();
+  const current = accounts.find(
+    (a) => a.accountType === "current" && !a.isExcludedFromHouseholdTotals
+  );
+  if (!current) return { accountName: null, points: [] };
+
+  const rows = await db
+    .select({
+      date: transactions.transactionDate,
+      amount: sql<number>`sum(${transactions.amountPence})`,
+    })
+    .from(transactions)
+    .where(eq(transactions.accountId, current.id))
+    .groupBy(transactions.transactionDate)
+    .orderBy(asc(transactions.transactionDate));
+
+  const points: { date: string; balancePence: number }[] = [];
+  rows.reduce((running, r) => {
+    const next = running + Number(r.amount);
+    points.push({ date: r.date, balancePence: next });
+    return next;
+  }, 0);
+  return { accountName: current.accountName, points };
+}
+
+export type BalanceAnalysis = {
+  current: number;
+  lowest: { date: string; balancePence: number };
+  highest: { date: string; balancePence: number };
+  change30: number | null;
+  change90: number | null;
+  change180: number | null;
+  daysInOverdraft: number;
+  totalDays: number;
+  monthlyChange: { month: string; change: number }[];
+  recentTrend: "improving" | "worsening" | "flat";
+};
+
+// Pure analysis over the balance progression. Months are month-end deltas.
+export function analyseBalance(
+  points: { date: string; balancePence: number }[]
+): BalanceAnalysis | null {
+  if (points.length === 0) return null;
+  const last = points[points.length - 1];
+  const current = last.balancePence;
+
+  const lowest = points.reduce((a, b) =>
+    b.balancePence < a.balancePence ? b : a
+  );
+  const highest = points.reduce((a, b) =>
+    b.balancePence > a.balancePence ? b : a
+  );
+
+  function balanceDaysAgo(days: number): number | null {
+    const target = new Date(last.date);
+    target.setDate(target.getDate() - days);
+    const iso = target.toISOString().slice(0, 10);
+    // Walk backwards so we find the latest point at or before `iso`.
+    for (let i = points.length - 1; i >= 0; i -= 1) {
+      if (points[i].date <= iso) return points[i].balancePence;
+    }
+    return null;
+  }
+
+  const bal30 = balanceDaysAgo(30);
+  const bal90 = balanceDaysAgo(90);
+  const bal180 = balanceDaysAgo(180);
+
+  const daysInOverdraft = points.filter((p) => p.balancePence < 0).length;
+
+  // Month-end running balance per month (last point of each month)
+  const monthEnd = new Map<string, number>();
+  for (const p of points) {
+    monthEnd.set(p.date.slice(0, 7), p.balancePence);
+  }
+  const months = [...monthEnd.keys()].sort();
+  const monthlyChange: { month: string; change: number }[] = [];
+  for (let i = 0; i < months.length; i += 1) {
+    const prevEnd = i === 0 ? 0 : monthEnd.get(months[i - 1]) ?? 0;
+    monthlyChange.push({
+      month: months[i],
+      change: (monthEnd.get(months[i]) ?? 0) - prevEnd,
+    });
+  }
+
+  // Trend over the last 3 months: positive sum = improving, negative = worsening.
+  const last3 = monthlyChange.slice(-3).reduce((a, m) => a + m.change, 0);
+  const recentTrend: "improving" | "worsening" | "flat" =
+    Math.abs(last3) < 5000
+      ? "flat"
+      : last3 > 0
+        ? "improving"
+        : "worsening";
+
+  return {
+    current,
+    lowest,
+    highest,
+    change30: bal30 == null ? null : current - bal30,
+    change90: bal90 == null ? null : current - bal90,
+    change180: bal180 == null ? null : current - bal180,
+    daysInOverdraft,
+    totalDays: points.length,
+    monthlyChange,
+    recentTrend,
+  };
+}
+
+// Average monthly overdraft interest actually charged, so we can tell the user
+// what clearing the overdraft would save them.
+export async function getAverageMonthlyOverdraftInterestPence(): Promise<number> {
+  const rows = await db
+    .select({
+      total: sql<number>`coalesce(sum(abs(${transactions.amountPence})), 0)`,
+      months: sql<number>`count(distinct to_char(${transactions.transactionDate}::date, 'YYYY-MM'))`,
+    })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.category, "Finance"),
+        eq(transactions.subcategory, "Overdraft Interest")
+      )
+    );
+  const total = Number(rows[0]?.total ?? 0);
+  const months = Number(rows[0]?.months ?? 0);
+  return months > 0 ? Math.round(total / months) : 0;
+}
+
 export async function getHouseholdPosition() {
   const accounts = await getAccounts();
   const nets = await accountNets();

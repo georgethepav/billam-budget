@@ -169,7 +169,8 @@ const RULES: RuleSeed[] = [
   { pattern: "COTSWOLD OUTDOOR", category: "Shopping", subcategory: "Outdoor", priority: 100 },
 
   // PRIORITY 100 - PERSONAL
-  { pattern: "ZETTLE + BARBE", category: "Personal", subcategory: "Barber", priority: 100 },
+  // Priority 70 so it beats the generic ZETTLE_ -> Kids rule added later.
+  { pattern: "ZETTLE + BARBE", category: "Personal", subcategory: "Barber", priority: 70 },
   { pattern: "WODIFY", category: "Personal", subcategory: "CrossFit", priority: 100 },
   { pattern: "THE GYM LTD", category: "Personal", subcategory: "Gym", priority: 100 },
   { pattern: "NOTTINGHAM FIT SPO", category: "Personal", subcategory: "Gym", priority: 100 },
@@ -467,6 +468,28 @@ const RULES: RuleSeed[] = [
   { pattern: "CHESTERFIELD PANTH", category: "Personal", subcategory: "Entertainment", priority: 100 },
   { pattern: "NORTH LEVERTON", category: "Groceries", subcategory: "Other", priority: 100 },
   { pattern: "SP ESSENCEVAULT", category: "Personal", subcategory: "Beauty", priority: 100 },
+
+  // ==== USER-CONFIRMED PASS (named-person eateries, Zettle=Kids, Samuel Hall) ====
+
+  // Priority 90 - pubs / restaurants that look like named people
+  { pattern: "SAMUEL HALL", category: "Eating Out", subcategory: "Pub", priority: 90 },
+  { pattern: "HEY DANNA", category: "Eating Out", subcategory: "Restaurant", priority: 90 },
+  { pattern: "DANIEL WISDOM", category: "Eating Out", subcategory: "Restaurant", priority: 90 },
+  { pattern: "LOGAN ALLEN", category: "Eating Out", subcategory: "Restaurant", priority: 90 },
+  { pattern: "STEVE ALLEN", category: "Eating Out", subcategory: "Restaurant", priority: 90 },
+  { pattern: "MATTHEW MOLYNEUX", category: "Eating Out", subcategory: "Restaurant", priority: 90 },
+  { pattern: "VK PATEL", category: "Eating Out", subcategory: "Restaurant", priority: 90 },
+  { pattern: "RICHARD TALBOT", category: "Eating Out", subcategory: "Pub", priority: 90 },
+  { pattern: "THOMPSON BROTHERS", category: "Eating Out", subcategory: "Pub", priority: 90 },
+  { pattern: "AC ALLAN", category: "Eating Out", subcategory: "Restaurant", priority: 90 },
+
+  // Priority 95 - generic Zettle catch-all for small merchants (user: Zettle = Kids).
+  // Specific Zettle rules above (priority 70-90, e.g. ZETTLE + BARBE, OXTON CRIC)
+  // beat this one.
+  { pattern: "ZETTLE_", category: "Kids", subcategory: "Zettle", priority: 95 },
+
+  // Priority 100 - Ozan is a local grocery/convenience store
+  { pattern: "OZAN INTERNATIONAL", category: "Groceries", subcategory: "Other", priority: 100 },
 
   // Priority 101 - generic Halfords retail (defer to HALFORDS AUTOCENTR priority 80)
   { pattern: "HALFORDS", category: "Shopping", subcategory: "Halfords", priority: 101 },

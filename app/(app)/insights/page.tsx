@@ -4,6 +4,7 @@ import {
   getSubscriptions,
   getAppleBills,
 } from "@/lib/queries-cached";
+import Link from "next/link";
 import { formatPence } from "@/lib/money";
 import { formatDisplayDate } from "@/lib/dates";
 import { ArrowDown, ArrowUp, Minus } from "lucide-react";
@@ -64,11 +65,19 @@ export default async function InsightsPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Insights</h1>
-        <p className="text-sm text-muted-foreground">
-          Trends, top spends and subscription audit.
-        </p>
+      <header className="flex flex-wrap items-baseline justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Insights</h1>
+          <p className="text-sm text-muted-foreground">
+            Trends, top spends and subscription audit.
+          </p>
+        </div>
+        <Link
+          href="/insights/categorisation"
+          className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+        >
+          Categorisation audit →
+        </Link>
       </header>
 
       <Card>

@@ -19,6 +19,9 @@ type RuleSeed = {
 };
 
 const RULES: RuleSeed[] = [
+  // PRIORITY 5 - specific NatWest flows caught before the generic mortgage rule
+  { pattern: "F/FLOW NATWEST", category: "Transfer", subcategory: "NatWest Flow", priority: 5, markExcluded: true },
+
   // PRIORITY 10 - HOUSING
   { pattern: "NATWEST BANK", category: "Housing", subcategory: "Mortgage", priority: 10 },
   { pattern: "NOTTM CITY COUNC", category: "Housing", subcategory: "Council Tax", priority: 10 },
@@ -33,6 +36,7 @@ const RULES: RuleSeed[] = [
   { pattern: "GEORGE BILLAM", category: "Transfer", subcategory: "Personal (George)", priority: 30, markExcluded: true },
   { pattern: "ESTELLE BILLAM", category: "Transfer", subcategory: "Personal (Estelle)", priority: 30, direction: "debit", markExcluded: true },
   { pattern: "PD SM BILLAM", category: "Transfer", subcategory: "Pocket Money", priority: 30, markExcluded: true },
+  { pattern: "SAVETHECHANGE", category: "Transfer", subcategory: "Save The Change", priority: 30, markExcluded: true },
 
   // PRIORITY 50 - UTILITIES
   { pattern: "BRITISH GAS", category: "Utilities", subcategory: "Energy", priority: 50 },
@@ -52,6 +56,8 @@ const RULES: RuleSeed[] = [
   { pattern: "DAILY OD INT", category: "Finance", subcategory: "Overdraft Interest", priority: 50 },
   { pattern: "CREATION.CO.UK", category: "Finance", subcategory: "Creation", priority: 50 },
   { pattern: "DVLA", category: "Finance", subcategory: "DVLA", priority: 50 },
+  { pattern: "ABOUND BY FINTERN", category: "Finance", subcategory: "Abound", priority: 50 },
+  { pattern: "BARCLAYS PRTNR FIN", category: "Finance", subcategory: "Barclays Partner Finance", priority: 50 },
 
   // PRIORITY 60 - SUBSCRIPTIONS
   { pattern: "APPLE.COM/BILL", category: "Subscriptions", subcategory: "Apple", priority: 60 },
@@ -66,6 +72,10 @@ const RULES: RuleSeed[] = [
   { pattern: "ANTHROPIC", category: "Subscriptions", subcategory: "Claude", priority: 60 },
   { pattern: "GOCARDLESS", category: "Subscriptions", subcategory: "GoCardless", priority: 60 },
   { pattern: "THREE ", category: "Subscriptions", subcategory: "Three Mobile", priority: 60 },
+  { pattern: "RING BASIC PLAN", category: "Subscriptions", subcategory: "Ring", priority: 60 },
+  { pattern: "RING SOLO PLAN", category: "Subscriptions", subcategory: "Ring", priority: 60 },
+  { pattern: "HELP.DISCOVERYPLUS", category: "Subscriptions", subcategory: "Discovery+", priority: 60 },
+  { pattern: "DISCOVERY PLUS", category: "Subscriptions", subcategory: "Discovery+", priority: 60 },
 
   // PRIORITY 70 - KIDS
   { pattern: "CHILDCARE ACCOUNT", category: "Kids", subcategory: "Childcare", priority: 70 },
@@ -80,10 +90,11 @@ const RULES: RuleSeed[] = [
   { pattern: "YOTO", category: "Kids", subcategory: "Yoto", priority: 70 },
   { pattern: "NOTTINGHAM CONTACT", category: "Kids", subcategory: "Activities", priority: 70 },
   { pattern: "GEDLING BOROUGH COUNCIL", category: "Kids", subcategory: "Swimming", priority: 70 },
+  { pattern: "SITTERS.CO.UK", category: "Kids", subcategory: "Childcare", priority: 70 },
+  { pattern: "OXTON CRIC", category: "Kids", subcategory: "Cricket", priority: 70 },
 
   // PRIORITY 80 - GROCERIES
   { pattern: "SAINSBURYS S/MKTS", category: "Groceries", subcategory: "Sainsburys", priority: 80 },
-  { pattern: "SAINSBURYS SMKT", category: "Groceries", subcategory: "Sainsburys", priority: 80 },
   { pattern: "SAINSBURYS.CO.UK", category: "Groceries", subcategory: "Sainsburys", priority: 80 },
   { pattern: "CO-OP GROUP", category: "Groceries", subcategory: "Co-op", priority: 80 },
   { pattern: "COOPERATIVE", category: "Groceries", subcategory: "Co-op", priority: 80 },
@@ -97,14 +108,15 @@ const RULES: RuleSeed[] = [
   { pattern: "MORRISON", category: "Groceries", subcategory: "Other", priority: 80 },
   { pattern: "HOLLAND AND BARRET", category: "Groceries", subcategory: "Holland & Barrett", priority: 80 },
 
-  // PRIORITY 80 - TRANSPORT
-  { pattern: "SAINSBURYS PETROL", category: "Transport", subcategory: "Fuel", priority: 80 },
-  { pattern: "BP WOLLATON", category: "Transport", subcategory: "Fuel", priority: 80 },
-  { pattern: " BP ", category: "Transport", subcategory: "Fuel", priority: 80 },
-  { pattern: "SHELL", category: "Transport", subcategory: "Fuel", priority: 80 },
-  { pattern: "ESSO", category: "Transport", subcategory: "Fuel", priority: 80 },
-  { pattern: "RONTEC", category: "Transport", subcategory: "Fuel", priority: 80 },
-  { pattern: "MFG ", category: "Transport", subcategory: "Fuel", priority: 80 },
+  // PRIORITY 80 - FUEL (own top-level category so dashboard tracker sees it)
+  { pattern: "SAINSBURYS PETROL", category: "Fuel", subcategory: "Sainsburys", priority: 80 },
+  { pattern: "BP WOLLATON", category: "Fuel", subcategory: "BP", priority: 80 },
+  { pattern: "SHELL", category: "Fuel", subcategory: "Shell", priority: 80 },
+  { pattern: "ESSO", category: "Fuel", subcategory: "Esso", priority: 80 },
+  { pattern: "RONTEC", category: "Fuel", subcategory: "Rontec", priority: 80 },
+  { pattern: "MFG ", category: "Fuel", subcategory: "MFG", priority: 80 },
+
+  // PRIORITY 80 - TRANSPORT (non-fuel)
   { pattern: "RINGGO", category: "Transport", subcategory: "Parking", priority: 80 },
   { pattern: "BROADMARSH CAR PAR", category: "Transport", subcategory: "Parking", priority: 80 },
   { pattern: "NCC IPS", category: "Transport", subcategory: "Parking", priority: 80 },
@@ -117,6 +129,18 @@ const RULES: RuleSeed[] = [
   { pattern: "MAPPERLEY SERVICE", category: "Transport", subcategory: "Car Service", priority: 80 },
   { pattern: "CARRINGTON SERVICE", category: "Transport", subcategory: "Car Service", priority: 80 },
   { pattern: "MARSHALL OMODA", category: "Transport", subcategory: "Car Service", priority: 80 },
+  { pattern: "HARRY S CAR WASH", category: "Transport", subcategory: "Car Wash", priority: 80 },
+
+  // PRIORITY 85 - HOLIDAY 2026 (travel bookings, holiday-let accommodation)
+  { pattern: "SOLMAR VILLAS", category: "Holiday 2026", subcategory: "Accommodation", priority: 85 },
+  { pattern: "CALLOW TOP", category: "Holiday 2026", subcategory: "Accommodation", priority: 85 },
+  { pattern: "CROWNE PLAZA", category: "Holiday 2026", subcategory: "Accommodation", priority: 85 },
+  { pattern: "TREWAN HALL", category: "Holiday 2026", subcategory: "Accommodation", priority: 85 },
+  { pattern: "BOOKING.COM", category: "Holiday 2026", subcategory: "Booking.com", priority: 85 },
+  { pattern: "BKG*BOOKING", category: "Holiday 2026", subcategory: "Booking.com", priority: 85 },
+  { pattern: "CARS ON BOOKING", category: "Holiday 2026", subcategory: "Car hire", priority: 85 },
+  { pattern: "LASTMINUTE", category: "Holiday 2026", subcategory: "Lastminute", priority: 85 },
+  { pattern: "P&O FERRIES", category: "Holiday 2026", subcategory: "Ferry", priority: 85 },
 
   // PRIORITY 90 - EATING OUT
   ...["WETHERSPOON", "WINCHESTER", "O NEILLS", "SLUG AND LETTUCE", "BURNT STUMP", "BISTRO LIVE", "NELSON", "FOX AND HOUNDS", "BELGRAVE ROOMS", "DAYBROOK", "MANAHATTA", "PEPES BAR", "V-SPOT"].map(
@@ -142,6 +166,7 @@ const RULES: RuleSeed[] = [
   { pattern: "VINTED", category: "Shopping", subcategory: "Vinted", priority: 100 },
   { pattern: "NEXT", category: "Shopping", subcategory: "Next", priority: 100 },
   { pattern: "TIKTOK SHOP", category: "Shopping", subcategory: "TikTok", priority: 100 },
+  { pattern: "COTSWOLD OUTDOOR", category: "Shopping", subcategory: "Outdoor", priority: 100 },
 
   // PRIORITY 100 - PERSONAL
   { pattern: "ZETTLE + BARBE", category: "Personal", subcategory: "Barber", priority: 100 },
@@ -151,6 +176,9 @@ const RULES: RuleSeed[] = [
   { pattern: "SHEENNAZ HAIR", category: "Personal", subcategory: "Hair", priority: 100 },
   { pattern: "WOODTHORPE DENTAL", category: "Personal", subcategory: "Dental", priority: 100 },
   { pattern: "LENSTORE", category: "Personal", subcategory: "Lenstore", priority: 100 },
+  { pattern: "NATIONAL TRUST", category: "Personal", subcategory: "National Trust", priority: 100 },
+  { pattern: "NFFC", category: "Personal", subcategory: "Football", priority: 100 },
+  { pattern: "NOTTINGHAM FOREST", category: "Personal", subcategory: "Football", priority: 100 },
 ];
 
 type TargetSeed = {

@@ -378,6 +378,32 @@ export async function getHeadlines() {
   return { start: week.start, end: week.end, topSpends, overspent };
 }
 
+// Average monthly spend per variable category over the last `months` complete
+// calendar months (so the current, partial month doesn't drag the average
+// down). Returns a map keyed by category -> average pence.
+export async function getAverageVariableSpendPerMonth(
+  months = 3
+): Promise<Map<string, number>> {
+  const buckets = new Map<string, number[]>();
+  const ref = new Date();
+  for (let i = 1; i <= months; i += 1) {
+    const d = new Date(ref.getFullYear(), ref.getMonth() - i, 1);
+    const r = monthRange(d);
+    const spend = await spendMapForRange(r.start, r.end);
+    for (const cat of VARIABLE_CATEGORIES) {
+      const prev = buckets.get(cat) ?? [];
+      prev.push(spend.get(cat) ?? 0);
+      buckets.set(cat, prev);
+    }
+  }
+  const out = new Map<string, number>();
+  for (const [cat, arr] of buckets) {
+    const avg = arr.reduce((a, b) => a + b, 0) / Math.max(1, arr.length);
+    out.set(cat, Math.round(avg));
+  }
+  return out;
+}
+
 export async function getMonthlyCategorySpend() {
   const { start, end } = monthRange();
   const [targets, spend] = await Promise.all([

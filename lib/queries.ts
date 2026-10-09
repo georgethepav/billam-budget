@@ -204,6 +204,106 @@ export function analyseBalance(
   };
 }
 
+export type OverdraftProjection = {
+  monthlyLows: { month: string; lowPence: number }[];
+  // Linear-fit slope on the last 6 monthly lows, in pence per month.
+  slopePencePerMonth: number;
+  // ISO YYYY-MM-01 for the projected month that the monthly low crosses 0.
+  projectedClearMonth: string | null;
+  // Short human-readable state.
+  status: "out" | "improving" | "flat" | "worsening";
+};
+
+// Project when the MONTHLY LOW point of the running balance crosses zero.
+// Pure maths: fits a line to the last 6 months of per-month-minimum balances
+// and extrapolates. Returns null if we have no data to work with.
+export function projectOverdraftClearance(
+  points: { date: string; balancePence: number }[]
+): OverdraftProjection | null {
+  if (points.length === 0) return null;
+
+  const lowByMonth = new Map<string, number>();
+  for (const p of points) {
+    const month = p.date.slice(0, 7);
+    const prev = lowByMonth.get(month);
+    if (prev == null || p.balancePence < prev) lowByMonth.set(month, p.balancePence);
+  }
+  const monthlyLows = [...lowByMonth.entries()]
+    .map(([month, lowPence]) => ({ month, lowPence }))
+    .sort((a, b) => a.month.localeCompare(b.month));
+
+  const recent = monthlyLows.slice(-6);
+  if (recent.length === 0) return null;
+
+  // If every recent month's low is already >= 0, you're out at the low point.
+  if (recent.every((m) => m.lowPence >= 0)) {
+    return {
+      monthlyLows,
+      slopePencePerMonth: 0,
+      projectedClearMonth: null,
+      status: "out",
+    };
+  }
+
+  // Fit y = slope*x + intercept to (index, low) across the recent months.
+  const n = recent.length;
+  if (n < 2) {
+    return {
+      monthlyLows,
+      slopePencePerMonth: 0,
+      projectedClearMonth: null,
+      status: "flat",
+    };
+  }
+  const meanX = (n - 1) / 2;
+  const meanY = recent.reduce((a, m) => a + m.lowPence, 0) / n;
+  let num = 0;
+  let den = 0;
+  for (let i = 0; i < n; i += 1) {
+    num += (i - meanX) * (recent[i].lowPence - meanY);
+    den += (i - meanX) ** 2;
+  }
+  const slope = den === 0 ? 0 : num / den;
+  const intercept = meanY - slope * meanX;
+
+  if (slope <= 500) {
+    // Treat under +£5/month as effectively flat.
+    return {
+      monthlyLows,
+      slopePencePerMonth: slope,
+      projectedClearMonth: null,
+      status: slope < -500 ? "worsening" : "flat",
+    };
+  }
+
+  // Solve slope*x + intercept = 0 for x (months from recent[0]).
+  const zeroX = -intercept / slope;
+  const latestX = n - 1;
+  // If the fit says we've already crossed, call it out.
+  if (zeroX <= latestX) {
+    return {
+      monthlyLows,
+      slopePencePerMonth: slope,
+      projectedClearMonth: null,
+      status: "out",
+    };
+  }
+
+  const anchor = new Date(`${recent[0].month}-01T00:00:00`);
+  const monthsAhead = Math.ceil(zeroX);
+  const projected = new Date(anchor);
+  projected.setMonth(projected.getMonth() + monthsAhead);
+  const projectedClearMonth = `${projected.getFullYear()}-${String(
+    projected.getMonth() + 1
+  ).padStart(2, "0")}-01`;
+  return {
+    monthlyLows,
+    slopePencePerMonth: slope,
+    projectedClearMonth,
+    status: "improving",
+  };
+}
+
 // Average monthly overdraft interest actually charged, so we can tell the user
 // what clearing the overdraft would save them.
 export async function getAverageMonthlyOverdraftInterestPence(): Promise<number> {

@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   getBalanceProgression,
   analyseBalance,
+  projectOverdraftClearance,
   getAverageMonthlyOverdraftInterestPence,
   getMonthlyCategorySpend,
 } from "@/lib/queries-cached";
@@ -37,10 +38,59 @@ export default async function OverdraftPage() {
   ]);
 
   const analysis = analyseBalance(progression.points);
+  const clearance = projectOverdraftClearance(progression.points);
   const chartData = progression.points.map((p) => ({
     date: p.date,
     balance: p.balancePence / 100,
   }));
+
+  function monthLabel(iso: string): string {
+    return new Date(`${iso.slice(0, 7)}-01T00:00:00`).toLocaleDateString(
+      "en-GB",
+      { month: "long", year: "numeric" }
+    );
+  }
+
+  let clearanceHeadline: string;
+  let clearanceDetail: string;
+  let clearanceAccent: "good" | "warn" | "danger" | "muted" = "muted";
+  if (!clearance) {
+    clearanceHeadline = "Not enough history yet";
+    clearanceDetail = "Import more transactions and this projection will fill in.";
+  } else if (clearance.status === "out") {
+    clearanceHeadline = "Already out at the low point";
+    clearanceDetail =
+      "The lowest balance in each of the last six months was above zero.";
+    clearanceAccent = "good";
+  } else if (clearance.status === "improving" && clearance.projectedClearMonth) {
+    clearanceHeadline = `Out of overdraft at the low point around ${monthLabel(
+      clearance.projectedClearMonth
+    )}`;
+    clearanceDetail = `Monthly lows are rising by ${formatPence(
+      Math.round(clearance.slopePencePerMonth)
+    )} per month at current pace.`;
+    clearanceAccent = "good";
+  } else if (clearance.status === "worsening") {
+    clearanceHeadline = "Not clearing - monthly lows are getting deeper";
+    clearanceDetail = `Lows have trended down by ${formatPence(
+      Math.round(-clearance.slopePencePerMonth)
+    )} per month over the last six months. Pull variable spend back to budget to reverse this.`;
+    clearanceAccent = "danger";
+  } else {
+    clearanceHeadline = "Flat - no clear improvement at the low point";
+    clearanceDetail =
+      "Monthly lows aren't trending up over the last six months. A small, consistent cut each month gets a projection going.";
+    clearanceAccent = "warn";
+  }
+
+  const clearanceColour =
+    clearanceAccent === "good"
+      ? "text-emerald-600 dark:text-emerald-400"
+      : clearanceAccent === "warn"
+        ? "text-amber-600 dark:text-amber-400"
+        : clearanceAccent === "danger"
+          ? "text-red-600 dark:text-red-400"
+          : "text-muted-foreground";
 
   // Build data-driven warnings and advice.
   const warnings: string[] = [];
@@ -185,8 +235,43 @@ export default async function OverdraftPage() {
             </CardDescription>
           )}
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <div className={cn("rounded-md border p-3", clearanceColour)}>
+            <p className="text-sm font-medium">{clearanceHeadline}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {clearanceDetail}
+            </p>
+          </div>
           <BalanceChart data={chartData} />
+          {clearance && clearance.monthlyLows.length > 0 && (
+            <div>
+              <p className="mb-2 text-xs font-medium text-muted-foreground">
+                Monthly low points (last 6)
+              </p>
+              <ul className="divide-y text-sm">
+                {clearance.monthlyLows.slice(-6).map((m) => (
+                  <li
+                    key={m.month}
+                    className="flex items-center justify-between py-1.5"
+                  >
+                    <span className="text-muted-foreground">
+                      {monthLabel(`${m.month}-01`)}
+                    </span>
+                    <span
+                      className={cn(
+                        "tabular-nums",
+                        m.lowPence < 0
+                          ? "text-red-600 dark:text-red-400"
+                          : "text-emerald-600 dark:text-emerald-400"
+                      )}
+                    >
+                      {formatPence(m.lowPence)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </CardContent>
       </Card>
 

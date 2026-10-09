@@ -42,8 +42,8 @@ export const getAverageVariableSpendPerMonth = cached(
   q.getAverageVariableSpendPerMonth,
   ["getAverageVariableSpendPerMonth"]
 );
-export { analyseBalance } from "./queries";
-export type { BalanceAnalysis } from "./queries";
+export { analyseBalance, projectOverdraftClearance } from "./queries";
+export type { BalanceAnalysis, OverdraftProjection } from "./queries";
 export const getTotalSaved = cached(q.getTotalSaved, ["getTotalSaved"]);
 export const getSavingsGoalsWithProgress = cached(
   q.getSavingsGoalsWithProgress,

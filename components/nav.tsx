@@ -15,6 +15,7 @@ import {
   Settings,
   Menu,
   LogOut,
+  TrendingDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -119,6 +120,22 @@ export function MobileNav() {
           </div>
         </SheetContent>
       </Sheet>
+    </div>
+  );
+}
+
+// Compact shortcut bar on the top-right of every protected page. Lives next
+// to the main content so it stays reachable even deep in a nested view.
+export function QuickLinks() {
+  return (
+    <div className="flex justify-end border-b bg-background/60 px-4 py-2 backdrop-blur md:px-6 lg:px-8">
+      <Link
+        href="/insights/overdraft"
+        className="inline-flex items-center gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200 dark:hover:bg-amber-950/70"
+      >
+        <TrendingDown className="h-3.5 w-3.5" />
+        Overdraft
+      </Link>
     </div>
   );
 }

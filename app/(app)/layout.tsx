@@ -1,5 +1,5 @@
 import { requireAuth } from "@/lib/auth";
-import { Sidebar, MobileNav } from "@/components/nav";
+import { Sidebar, MobileNav, QuickLinks } from "@/components/nav";
 
 // Every page in this segment is per-request: it reads the session cookie and
 // live transaction data, so it must never be statically prerendered.
@@ -16,6 +16,7 @@ export default async function AppLayout({
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <MobileNav />
+        <QuickLinks />
         <main className="relative flex-1 p-4 md:p-6 lg:p-8">{children}</main>
       </div>
     </div>
